@@ -14,7 +14,7 @@ export const siteConfig = {
     tagline: "Cung cấp & tư vấn thiết bị điện máy công trình",
     website: "https://dienmaykdt89.com",
     logoText: "KDT-89",
-    logoUrl: "/logo.png", // Tùy chọn: đường dẫn file ảnh logo thực tế (chép file vào public/logo.png hoặc dán link)
+    logoUrl: "/logo.png", // File logo chính thức của Điện Máy KDT-89 trong public/logo.png
   },
   contact: {
     hotlines: [

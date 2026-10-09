@@ -38,7 +38,7 @@ export const KdtLogo: React.FC<KdtLogoProps> = ({ className = "w-10 h-10", size 
   const style = size ? { width: size, height: size } : undefined;
 
   // Nếu có logo tùy chỉnh và chưa bị lỗi tải ảnh, hiển thị trực tiếp ảnh logo thực tế
-  if (customLogo && !imgError) {
+  if (customLogo && customLogo.trim() !== '' && !imgError) {
     return (
       <img
         src={customLogo}

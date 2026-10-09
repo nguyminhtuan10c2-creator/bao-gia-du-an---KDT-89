@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { QuoteForm } from './components/QuoteForm';
@@ -16,6 +16,7 @@ import { FloatingContact } from './components/FloatingContact';
 import { Footer } from './components/Footer';
 import { LeadsManagerModal } from './components/LeadsManagerModal';
 import { AdminMediaManager } from './components/AdminMediaManager';
+import { AdminLoginModal } from './components/AdminLoginModal';
 
 export default function App() {
   const [quoteConfig, setQuoteConfig] = useState<{
@@ -28,6 +29,60 @@ export default function App() {
 
   const [isLeadsManagerOpen, setIsLeadsManagerOpen] = useState(false);
   const [isAdminMediaOpen, setIsAdminMediaOpen] = useState(false);
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
+
+  // Chế độ Quản trị:
+  // - Nếu trong localStorage đã lưu kdt_admin_active = true thì đã đăng nhập
+  // - Nếu URL có ?admin hoặc ?kdt=admin:
+  //   + Nếu chưa lưu phiên đăng nhập => mở ngay popup mật khẩu để chủ web nhập pass
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem('kdt_admin_active') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // Tự động kiểm tra URL khi tải trang: nếu có ?admin và chưa đăng nhập thì hiện bảng nhập mật khẩu
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('admin') || params.get('kdt') === 'admin') {
+        const isAlreadyLoggedIn = localStorage.getItem('kdt_admin_active') === 'true';
+        if (!isAlreadyLoggedIn) {
+          setIsAdminLoginOpen(true);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleRequestAdmin = () => {
+    if (isAdmin) {
+      // Nếu đang bật, bấm vào sẽ đăng xuất / ẩn chế độ quản trị
+      try {
+        localStorage.removeItem('kdt_admin_active');
+      } catch {
+        // ignore
+      }
+      setIsAdmin(false);
+    } else {
+      // Nếu chưa bật, mở popup nhập mật khẩu
+      setIsAdminLoginOpen(true);
+    }
+  };
+
+  const handleLoginSuccess = () => {
+    try {
+      localStorage.setItem('kdt_admin_active', 'true');
+    } catch {
+      // ignore
+    }
+    setIsAdmin(true);
+    setIsAdminLoginOpen(false);
+  };
 
   const scrollToQuote = () => {
     const el = document.getElementById('form-bao-gia');
@@ -112,6 +167,8 @@ export default function App() {
 
       {/* 10. Corporate Footer */}
       <Footer 
+        isAdmin={isAdmin}
+        onToggleAdmin={handleRequestAdmin}
         onOpenLeadsManager={() => setIsLeadsManagerOpen(true)} 
         onOpenAdminMedia={() => setIsAdminMediaOpen(true)}
       />
@@ -126,6 +183,13 @@ export default function App() {
       <AdminMediaManager
         isOpen={isAdminMediaOpen}
         onClose={() => setIsAdminMediaOpen(false)}
+      />
+
+      {/* 13. Admin Login Password Modal */}
+      <AdminLoginModal
+        isOpen={isAdminLoginOpen}
+        onClose={() => setIsAdminLoginOpen(false)}
+        onSuccess={handleLoginSuccess}
       />
     </div>
   );

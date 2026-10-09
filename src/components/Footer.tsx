@@ -4,11 +4,32 @@ import { KdtLogo } from './KdtLogo';
 import { Phone, MapPin, Clock, MessageCircle, ShieldCheck } from 'lucide-react';
 
 interface FooterProps {
+  isAdmin?: boolean;
   onOpenLeadsManager?: () => void;
   onOpenAdminMedia?: () => void;
+  onToggleAdmin?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onOpenLeadsManager, onOpenAdminMedia }) => {
+export const Footer: React.FC<FooterProps> = ({ 
+  isAdmin = false, 
+  onOpenLeadsManager, 
+  onOpenAdminMedia,
+  onToggleAdmin 
+}) => {
+  const [clickCount, setClickCount] = React.useState(0);
+
+  const handleCopyrightClick = () => {
+    const newCount = clickCount + 1;
+    setClickCount(newCount);
+    if (newCount >= 3) {
+      setClickCount(0);
+      if (onToggleAdmin) {
+        onToggleAdmin();
+      }
+    }
+    // Tự động reset sau 2 giây nếu không bấm tiếp
+    setTimeout(() => setClickCount(0), 2000);
+  };
   return (
     <footer className="bg-neutral-950 text-neutral-400 border-t border-neutral-800 text-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
@@ -120,7 +141,11 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLeadsManager, onOpenAdminM
 
         {/* Bottom Bar */}
         <div className="mt-12 pt-6 border-t border-neutral-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-neutral-500">
-          <div>
+          <div 
+            onClick={handleCopyrightClick} 
+            className="select-none cursor-default hover:text-neutral-400 transition-colors"
+            title="KDT-89 Official"
+          >
             © {new Date().getFullYear()} {siteConfig.brand.legalName}. Tất cả các quyền được bảo lưu.
           </div>
           <div className="flex items-center gap-4 flex-wrap">
@@ -133,33 +158,48 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLeadsManager, onOpenAdminM
             </a>
             <span>·</span>
             <span>Kho TP. Hồ Chí Minh</span>
-            {onOpenLeadsManager && (
-              <>
-                <span>·</span>
+          </div>
+        </div>
+
+        {/* Dedicated Admin Bar - CHỈ HIỂN THỊ KHI CHỦ WEB ĐĂNG NHẬP / BẬT CHẾ ĐỘ ADMIN (?admin) */}
+        {isAdmin && (
+          <div className="mt-4 p-3 bg-neutral-900 border border-neutral-800 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-amber-400 font-bold">
+              <span>🔐</span>
+              <span>Chế độ Quản trị viên (Chỉ bạn thấy khi vào link ?admin):</span>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              {onOpenLeadsManager && (
                 <button
                   type="button"
                   onClick={onOpenLeadsManager}
-                  className="hover:text-amber-400 text-neutral-400 font-medium transition-colors cursor-pointer"
+                  className="px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-amber-300 font-medium transition-colors cursor-pointer"
                 >
-                  ⚙️ Quản lý Lead &amp; Google Sheet
+                  ⚙️ Quản lý Lead &amp; Sheets
                 </button>
-              </>
-            )}
-            {onOpenAdminMedia && (
-              <>
-                <span>·</span>
+              )}
+              {onOpenAdminMedia && (
                 <button
                   type="button"
                   onClick={onOpenAdminMedia}
-                  className="hover:text-orange-400 text-neutral-400 font-medium transition-colors cursor-pointer"
-                  title="Dành riêng cho chủ web: Tải logo thực tế & thay ảnh kho"
+                  className="px-2.5 py-1 rounded bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30 font-medium transition-colors cursor-pointer"
                 >
                   🖼️ Quản trị Logo &amp; Ảnh
                 </button>
-              </>
-            )}
+              )}
+              {onToggleAdmin && (
+                <button
+                  type="button"
+                  onClick={onToggleAdmin}
+                  className="px-2 py-1 rounded bg-neutral-800 hover:bg-red-950 hover:text-red-300 text-neutral-400 transition-colors cursor-pointer"
+                  title="Ẩn chế độ quản trị để xem web như khách bình thường"
+                >
+                  ✕ Ẩn quản trị
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
     </footer>

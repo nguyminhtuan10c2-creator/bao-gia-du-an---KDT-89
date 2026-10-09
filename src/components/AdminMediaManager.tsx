@@ -251,7 +251,7 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({ isOpen, on
                   </div>
                 </div>
 
-                {/* Nút bấm tải logo lên */}
+                {/* Nút bấm tải logo lên & Đổi mật khẩu */}
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                   <label className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer">
                     <Upload className="w-4 h-4" />
@@ -275,6 +275,35 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({ isOpen, on
                     </button>
                   )}
                 </div>
+              </div>
+
+              {/* Khu vực bảo mật mật khẩu admin */}
+              <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <div className="font-bold text-neutral-900 flex items-center gap-1.5">
+                    <span>🔐</span>
+                    <span>Mật khẩu bảo vệ chế độ Quản trị (?admin)</span>
+                  </div>
+                  <p className="text-neutral-600 mt-0.5">
+                    Mật khẩu mặc định: <code className="bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold font-mono">kdt89admin</code>. Anh có thể đổi sang mật khẩu riêng bất cứ lúc nào.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentPass = localStorage.getItem('kdt_admin_pass') || 'kdt89admin';
+                    const newPass = window.prompt(`Mật khẩu hiện tại đang là: ${currentPass}\n\nNhập mật khẩu quản trị mới anh muốn đổi (ít nhất 4 ký tự):`);
+                    if (newPass && newPass.trim().length >= 4) {
+                      localStorage.setItem('kdt_admin_pass', newPass.trim());
+                      showSuccess(`Đã đổi mật khẩu quản trị thành: "${newPass.trim()}"!`);
+                    } else if (newPass !== null) {
+                      alert('Mật khẩu cần ít nhất 4 ký tự!');
+                    }
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-amber-400 font-bold text-xs transition-colors cursor-pointer shrink-0"
+                >
+                  🔑 Đổi mật khẩu
+                </button>
               </div>
 
               {/* Hướng dẫn khi xuất bản web chính thức */}
