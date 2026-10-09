@@ -1,0 +1,6 @@
+{
+  "name": "Điện Máy KDT-89 | Kênh Báo Giá Điện Máy Công Trình",
+  "description": "Báo giá thiết bị điện máy công trình cho nhà trọ, căn hộ dịch vụ (CHDV), khách sạn và công trình dân dụng. Cung cấp máy lạnh, máy tắm nóng, máy giặt, tủ lạnh, tivi với chiết khấu tốt nhất.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

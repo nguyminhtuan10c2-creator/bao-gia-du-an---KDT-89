@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%" fill="none">
+  <!-- Dynamic Orbital Swooshes (Top Right & Bottom Left) in Silver Grey -->
+  <g id="orbital-arcs" stroke="#7A7E83" stroke-linecap="round" fill="none">
+    <!-- Top-Right Swooshes (Outer to Inner) -->
+    <path d="M 175 145 C 230 75, 340 50, 410 95 C 455 125, 465 180, 445 220" stroke-width="22" opacity="0.9" />
+    <path d="M 215 140 C 260 90, 340 75, 395 110 C 430 135, 440 175, 420 210" stroke-width="16" opacity="0.8" />
+    <path d="M 255 140 C 285 105, 345 95, 385 120 C 410 140, 418 170, 400 200" stroke-width="12" opacity="0.7" />
+
+    <!-- Bottom-Left Swooshes (Outer to Inner) -->
+    <path d="M 325 355 C 270 425, 160 450, 90 405 C 45 375, 35 320, 55 280" stroke-width="22" opacity="0.9" />
+    <path d="M 285 360 C 240 410, 160 425, 105 390 C 70 365, 60 325, 80 290" stroke-width="16" opacity="0.8" />
+    <path d="M 245 360 C 215 395, 155 405, 115 380 C 90 360, 82 330, 100 300" stroke-width="12" opacity="0.7" />
+  </g>
+
+  <!-- Central Heavy Stylized "KDT" in Vibrant Brand Orange -->
+  <!-- Letter K -->
+  <path d="M 40 185 C 40 168, 65 158, 95 158 L 132 158 L 132 238 L 198 160 L 255 160 L 180 242 L 260 350 L 196 350 L 132 260 L 132 350 L 68 350 C 50 350, 40 338, 40 320 Z" fill="#F05A22" />
+
+  <!-- Letter D -->
+  <path d="M 188 206 C 188 178, 206 160, 240 160 L 330 160 C 375 160, 405 195, 405 255 C 405 315, 375 350, 330 350 L 188 350 Z M 250 220 L 250 292 L 310 292 C 335 292, 348 278, 348 255 C 348 232, 335 220, 310 220 Z" fill="#F05A22" />
+
+  <!-- Letter T -->
+  <path d="M 320 185 L 320 160 L 468 160 L 452 200 L 416 200 L 416 350 L 358 350 L 358 200 L 320 200 Z" fill="#F05A22" />
+</svg>

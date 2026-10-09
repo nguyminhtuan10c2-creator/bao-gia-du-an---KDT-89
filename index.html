@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function() {
+        try {
+          var _nativeFetch = window.fetch;
+          var _currentFetch = function() {
+            return (_nativeFetch || window.fetch).apply(window, arguments);
+          };
+          var descriptor = {
+            configurable: true,
+            enumerable: true,
+            get: function() {
+              return _currentFetch;
+            },
+            set: function(fn) {
+              _currentFetch = fn;
+            }
+          };
+          try {
+            Object.defineProperty(window, 'fetch', descriptor);
+          } catch (e) {}
+          try {
+            if (typeof Window !== 'undefined' && Window.prototype) {
+              Object.defineProperty(Window.prototype, 'fetch', descriptor);
+            }
+          } catch (e) {}
+        } catch (e) {}
+      })();
+    </script>
+    <title>Điện Máy KDT-89 | Kênh Báo Giá Điện Máy Công Trình</title>
+    <link rel="icon" type="image/svg+xml" href="/src/assets/images/kdt_logo.svg" />
+    <meta name="description" content="Báo giá thiết bị điện máy công trình cho nhà trọ, căn hộ dịch vụ (CHDV), khách sạn và công trình dân dụng. Cung cấp máy lạnh, máy tắm nóng, máy giặt, tủ lạnh, tivi với chiết khấu tốt nhất." />
+    <meta property="og:title" content="Điện Máy KDT-89 | Kênh Báo Giá Điện Máy Công Trình" />
+    <meta property="og:description" content="Báo giá thiết bị điện máy công trình cho nhà trọ, căn hộ dịch vụ (CHDV), khách sạn và công trình dân dụng. Cung cấp máy lạnh, máy tắm nóng, máy giặt, tủ lạnh, tivi với chiết khấu tốt nhất." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://dienmaykdt89.com" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "Công ty TNHH KDT-89",
+      "alternateName": "Điện Máy KDT-89",
+      "url": "https://dienmaykdt89.com",
+      "telephone": "+84918064167",
+      "priceRange": "$$",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "89-91 Đường Số 1, KDC Hiệp Ân",
+        "addressLocality": "Phường Chánh Hưng, TP. Hồ Chí Minh",
+        "addressCountry": "VN"
+      },
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "opens": "08:00",
+        "closes": "18:00"
+      }
+    }
+    </script>
+  </head>
+  <body class="bg-neutral-50 text-neutral-900 antialiased selection:bg-amber-100 selection:text-amber-900 font-sans">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
