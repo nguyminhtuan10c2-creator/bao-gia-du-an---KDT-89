@@ -6,8 +6,9 @@ interface AdminLoginModalProps {
   onSuccess: () => void;
 }
 
-// Mật khẩu mặc định quản trị (dễ nhớ, anh có thể tự đổi ngay trong popup)
-export const DEFAULT_ADMIN_PASS = 'kdt89admin';
+// Mật khẩu mặc định quản trị (dễ nhớ, anh có thể dùng 123456 hoặc kdt89admin)
+export const DEFAULT_ADMIN_PASS = '123456';
+const BACKUP_ADMIN_PASS = 'kdt89admin';
 
 export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [password, setPassword] = useState('');
@@ -18,8 +19,13 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const savedPass = localStorage.getItem('kdt_admin_pass') || DEFAULT_ADMIN_PASS;
-    if (password.trim() === savedPass) {
+    const savedPass = localStorage.getItem('kdt_admin_pass');
+    const inputPass = password.trim();
+    const isCorrect = savedPass 
+      ? inputPass === savedPass 
+      : (inputPass === DEFAULT_ADMIN_PASS || inputPass === BACKUP_ADMIN_PASS);
+
+    if (isCorrect) {
       setError(false);
       setPassword('');
       onSuccess();
@@ -100,11 +106,12 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
             <div className="mt-2 p-2.5 rounded-lg bg-neutral-950 border border-neutral-800 text-[11px] text-neutral-300 text-left">
               <p className="text-neutral-400 mb-1">Mật khẩu ban đầu mặc định của anh là:</p>
               <div className="flex items-center justify-between font-mono font-bold text-amber-400 bg-neutral-900 px-2 py-1 rounded border border-neutral-800">
-                <span>kdt89admin</span>
+                <span>123456</span>
+                <span className="text-neutral-500 font-normal text-[10px]">(hoặc kdt89admin)</span>
                 <button
                   type="button"
                   onClick={() => {
-                    setPassword('kdt89admin');
+                    setPassword('123456');
                     setError(false);
                   }}
                   className="text-[10px] text-orange-400 hover:text-white underline font-sans ml-2"

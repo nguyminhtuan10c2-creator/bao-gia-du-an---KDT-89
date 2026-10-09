@@ -373,15 +373,15 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
                   )}
                 </button>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                   <a
                     href={`${siteConfig.contact.hotlines[0].zalo}?text=${buildZaloMessage()}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 py-3 px-3.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors whitespace-nowrap"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 sm:py-3 px-3 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors whitespace-nowrap"
                     title={`Zalo Ms. Ngọc (${siteConfig.contact.hotlines[0].display})`}
                   >
-                    <MessageCircle className="w-4 h-4" />
+                    <MessageCircle className="w-4 h-4 text-blue-600" />
                     <span>Zalo Ms. Ngọc ({siteConfig.contact.hotlines[0].display})</span>
                   </a>
 
@@ -389,10 +389,10 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
                     href={`${siteConfig.contact.hotlines[1].zalo}?text=${buildZaloMessage()}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 py-3 px-3.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors whitespace-nowrap"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 sm:py-3 px-3 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors whitespace-nowrap"
                     title={`Zalo Mr. Dũng (${siteConfig.contact.hotlines[1].display})`}
                   >
-                    <MessageCircle className="w-4 h-4" />
+                    <MessageCircle className="w-4 h-4 text-blue-600" />
                     <span>Zalo Mr. Dũng ({siteConfig.contact.hotlines[1].display})</span>
                   </a>
                 </div>

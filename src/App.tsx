@@ -82,6 +82,7 @@ export default function App() {
     }
     setIsAdmin(true);
     setIsAdminLoginOpen(false);
+    setIsAdminMediaOpen(true);
   };
 
   const scrollToQuote = () => {

@@ -18,11 +18,11 @@ export const siteConfig = {
   },
   contact: {
     hotlines: [
-      { display: "0918 064 164", raw: "0918064164", zalo: "https://zalo.me/0918064164", label: "Ms. Ngọc" },
+      { display: "0918 064 167", raw: "0918064167", zalo: "https://zalo.me/0918064167", label: "Ms. Ngọc" },
       { display: "0903 667 355", raw: "0903667355", zalo: "https://zalo.me/0903667355", label: "Mr. Dũng" },
     ],
-    primaryZaloUrl: "https://zalo.me/0918064164",
-    primaryPhone: "0918064164",
+    primaryZaloUrl: "https://zalo.me/0918064167",
+    primaryPhone: "0918064167",
     address: "89-91 Đường Số 1, KDC Hiệp Ân, Phường Chánh Hưng, TP. Hồ Chí Minh",
     workingHours: "08:00 - 18:00 (Thứ Hai - Chủ Nhật)",
   },
