@@ -4,11 +4,12 @@ import { KdtLogo } from './KdtLogo';
 import { Phone, MessageCircle, Menu, X, ArrowUpRight } from 'lucide-react';
 
 interface HeaderProps {
+  isAdmin?: boolean;
   onOpenQuote: () => void;
   onOpenLeadsManager?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenQuote, onOpenLeadsManager }) => {
+export const Header: React.FC<HeaderProps> = ({ isAdmin = false, onOpenQuote, onOpenLeadsManager }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const hotline1 = siteConfig.contact.hotlines[0] || { display: "0918 064 167", raw: "0918064167", label: "Ms. Ngọc", zalo: "https://zalo.me/0918064167" };
@@ -222,16 +223,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenQuote, onOpenLeadsManager 
                 </div>
               </div>
 
-              {onOpenLeadsManager && (
+              {isAdmin && onOpenLeadsManager && (
                 <button
                   type="button"
                   onClick={() => {
                     setMobileMenuOpen(false);
                     onOpenLeadsManager();
                   }}
-                  className="w-full py-2 px-3 text-xs text-neutral-500 hover:text-neutral-800 text-center border-t border-neutral-100 pt-2 cursor-pointer"
+                  className="w-full py-2 px-3 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg text-center font-medium border border-amber-200 mt-2 cursor-pointer"
                 >
-                  ⚙️ Hộp thư Lead &amp; Quản lý Google Sheets
+                  ⚙️ Hộp thư Lead &amp; Quản lý Google Sheets (Admin)
                 </button>
               )}
             </div>

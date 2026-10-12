@@ -130,6 +130,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-neutral-50 text-neutral-900 selection:bg-amber-100 selection:text-amber-900">
       {/* 1. Header (Top Bar Contract) */}
       <Header 
+        isAdmin={isAdmin}
         onOpenQuote={scrollToQuote} 
         onOpenLeadsManager={() => setIsLeadsManagerOpen(true)}
       />
@@ -143,6 +144,7 @@ export default function App() {
 
         {/* 3. ĐĂNG KÝ BÁO GIÁ CÔNG TRÌNH - ĐƯỢC ĐƯA LÊN ĐẦU TRANG */}
         <QuoteForm 
+          isAdmin={isAdmin}
           initialConfig={quoteConfig} 
           onOpenLeadsManager={() => setIsLeadsManagerOpen(true)}
         />

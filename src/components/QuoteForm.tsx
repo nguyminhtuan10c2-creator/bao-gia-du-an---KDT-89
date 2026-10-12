@@ -4,6 +4,7 @@ import { saveLead } from '../utils/leadStorage';
 import { Send, CheckCircle2, AlertCircle, MessageCircle, Phone, ArrowRight, Loader2, Sparkles, Database } from 'lucide-react';
 
 interface QuoteFormProps {
+  isAdmin?: boolean;
   initialConfig?: {
     projectType?: string;
     roomCount?: number;
@@ -14,7 +15,7 @@ interface QuoteFormProps {
   onOpenLeadsManager?: () => void;
 }
 
-export const QuoteForm: React.FC<QuoteFormProps> = ({ initialConfig, onOpenLeadsManager }) => {
+export const QuoteForm: React.FC<QuoteFormProps> = ({ isAdmin = false, initialConfig, onOpenLeadsManager }) => {
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [projectAddress, setProjectAddress] = useState('');
@@ -157,15 +158,15 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
             </p>
           </div>
 
-          {onOpenLeadsManager && (
+          {isAdmin && onOpenLeadsManager && (
             <button
               type="button"
               onClick={onOpenLeadsManager}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-neutral-700 bg-white hover:bg-neutral-50 border border-neutral-300 rounded-lg shadow-2xs transition-colors shrink-0 cursor-pointer"
-              title="Xem danh sách khách đã gửi và hướng dẫn Google Sheets"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg shadow-2xs transition-colors shrink-0 cursor-pointer"
+              title="Xem danh sách khách đã gửi và hướng dẫn Google Sheets (Chỉ quản trị viên thấy)"
             >
               <Database className="w-3.5 h-3.5 text-amber-600" />
-              <span>Hộp thư Lead &amp; Google Sheet</span>
+              <span>Hộp thư Lead &amp; Google Sheet (Admin)</span>
             </button>
           )}
         </div>
