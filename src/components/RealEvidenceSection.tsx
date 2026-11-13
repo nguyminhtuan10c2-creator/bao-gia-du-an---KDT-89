@@ -1,36 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { siteConfig } from '../config/siteConfig';
 import PlaceholderImage from './PlaceholderImage';
-import { MapPin, X, ZoomIn, CheckCircle, ShieldCheck } from 'lucide-react';
+import { MapPin, X, ZoomIn, CheckCircle, ShieldCheck, Image as ImageIcon } from 'lucide-react';
+import { EditableEvidenceCaption } from '../services/siteContentService';
+import { getLocalMediaAssets } from '../services/mediaSyncService';
 
-export const RealEvidenceSection: React.FC = () => {
+interface RealEvidenceSectionProps {
+  title?: string;
+  subtitle?: string;
+  badge?: string;
+  customCaptions?: Record<string, EditableEvidenceCaption>;
+  contactAddress?: string;
+  contactWorkingHours?: string;
+  isAdmin?: boolean;
+  onEditSection?: () => void;
+  onEditEvidenceImages?: () => void;
+}
+
+export const RealEvidenceSection: React.FC<RealEvidenceSectionProps> = ({
+  title,
+  subtitle,
+  badge,
+  customCaptions,
+  contactAddress,
+  contactWorkingHours,
+  isAdmin = false,
+  onEditSection,
+  onEditEvidenceImages,
+}) => {
   const [selectedImage, setSelectedImage] = useState<{
     src: string;
     caption: string;
     tag: string;
   } | null>(null);
 
-  // Custom photos from admin/localStorage if any
-  const [customPhotos, setCustomPhotos] = useState<Record<number, string>>(() => {
-    try {
-      const saved = localStorage.getItem('kdt_custom_evidence');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
+  // Custom photos from admin/Firebase cache if any
+  const [customPhotos, setCustomPhotos] = useState<Record<number, string>>(
+    () => getLocalMediaAssets().evidenceImages
+  );
 
   useEffect(() => {
     const handleUpdate = () => {
-      try {
-        const saved = localStorage.getItem('kdt_custom_evidence');
-        if (saved) {
-          setCustomPhotos(JSON.parse(saved));
-        }
-      } catch {
-        // Ignore
-      }
+      setCustomPhotos(getLocalMediaAssets().evidenceImages);
     };
+    handleUpdate();
     window.addEventListener('kdt_evidence_updated', handleUpdate);
     window.addEventListener('storage', handleUpdate);
     return () => {
@@ -48,16 +61,37 @@ export const RealEvidenceSection: React.FC = () => {
           <div className="max-w-3xl">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-400">
               <MapPin className="w-3.5 h-3.5" />
-              <span>Năng Lực Kho Bãi &amp; Giao Vận KDT-89</span>
-              <span className="text-neutral-500">·</span>
-              <span className="text-neutral-300 font-normal normal-case">Hồ Chí Minh &amp; Các Tỉnh Lân Cận</span>
+              <span>{badge || "Năng Lực Kho Bãi & Giao Vận KDT-89 · Hồ Chí Minh & Các Tỉnh Lân Cận"}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mt-2">
-              {siteConfig.realEvidence.title}
+              {title || siteConfig.realEvidence.title}
             </h2>
             <p className="text-sm sm:text-base text-neutral-300 mt-2 leading-relaxed">
-              {siteConfig.realEvidence.subtitle}. Hàng hóa luôn có sẵn tại kho TP.HCM, xuất kho nguyên đai nguyên kiện kèm phiếu bảo hành chính hãng.
+              {subtitle || siteConfig.realEvidence.subtitle}
             </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {isAdmin && onEditEvidenceImages && (
+              <button
+                type="button"
+                onClick={onEditEvidenceImages}
+                className="px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold self-start shrink-0 cursor-pointer flex items-center gap-1.5"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span>Đổi 6 Ảnh Kho</span>
+              </button>
+            )}
+
+            {isAdmin && onEditSection && (
+              <button
+                type="button"
+                onClick={onEditSection}
+                className="px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-300 text-xs font-semibold border border-neutral-700 self-start shrink-0 cursor-pointer"
+              >
+                ✏️ Sửa Chữ Kho Bãi
+              </button>
+            )}
           </div>
 
           <div className="p-4 rounded-xl bg-neutral-800/90 border border-neutral-700 max-w-sm shrink-0">
@@ -65,11 +99,11 @@ export const RealEvidenceSection: React.FC = () => {
               Tổng kho KDT-89:
             </div>
             <div className="text-xs text-neutral-200 mt-1 leading-snug">
-              {siteConfig.contact.address}
+              {contactAddress || siteConfig.contact.address}
             </div>
-            <div className="text-[11px] text-neutral-400 mt-1 flex items-center justify-between">
-              <span>Mở cửa: {siteConfig.contact.workingHours}</span>
-              <span className="text-emerald-400 font-bold flex items-center gap-1">
+            <div className="text-[11px] text-neutral-400 mt-1 flex items-center justify-between gap-2">
+              <span>Mở cửa: {contactWorkingHours || siteConfig.contact.workingHours}</span>
+              <span className="text-emerald-400 font-bold flex items-center gap-1 shrink-0">
                 <ShieldCheck className="w-3 h-3" /> Sẵn hàng
               </span>
             </div>
@@ -80,6 +114,9 @@ export const RealEvidenceSection: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {siteConfig.realEvidence.items.map((item) => {
             const currentSrc = customPhotos[item.id] || item.imageSrc;
+            const override = customCaptions?.[String(item.id)];
+            const displayTag = override?.tag || item.tag;
+            const displayCaption = override?.caption || item.caption;
 
             return (
               <div
@@ -88,13 +125,13 @@ export const RealEvidenceSection: React.FC = () => {
               >
                 {/* Visual Area */}
                 <div 
-                  onClick={() => setSelectedImage({ src: currentSrc, caption: item.caption, tag: item.tag })}
+                  onClick={() => setSelectedImage({ src: currentSrc, caption: displayCaption, tag: displayTag })}
                   className="cursor-pointer relative"
                   title="Nhấp để phóng to xem chi tiết"
                 >
                   <PlaceholderImage
                     src={currentSrc}
-                    alt={item.caption}
+                    alt={displayCaption}
                     aspect="aspect-4/3"
                     label={item.placeholderLabel}
                     className="bg-neutral-900"
@@ -103,7 +140,7 @@ export const RealEvidenceSection: React.FC = () => {
 
                   {/* Top unboxed tag */}
                   <div className="absolute top-3 left-3 text-[11px] font-semibold text-neutral-200 bg-neutral-900/80 backdrop-blur-xs px-2 py-1 rounded border border-neutral-700 pointer-events-none">
-                    {item.tag}
+                    {displayTag}
                   </div>
 
                   {/* Zoom affordance */}
@@ -115,7 +152,7 @@ export const RealEvidenceSection: React.FC = () => {
                 {/* Caption & Details - Sạch sẽ, không hiện nút tải ảnh đối với khách */}
                 <div className="p-4 bg-neutral-950 border-t border-neutral-800/80">
                   <p className="text-xs sm:text-sm font-semibold text-neutral-100 leading-snug line-clamp-2">
-                    {item.caption}
+                    {displayCaption}
                   </p>
 
                   <div className="mt-3 pt-2.5 border-t border-neutral-800 flex items-center justify-between text-[11px] text-neutral-400">

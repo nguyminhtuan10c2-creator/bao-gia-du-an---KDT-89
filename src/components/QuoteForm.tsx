@@ -5,22 +5,38 @@ import { Send, CheckCircle2, AlertCircle, MessageCircle, Phone, ArrowRight, Load
 
 interface QuoteFormProps {
   isAdmin?: boolean;
+  badge?: string;
+  title?: string;
+  subtitle?: string;
+  onEditSection?: () => void;
   initialConfig?: {
     projectType?: string;
     roomCount?: number;
     selectedItems?: string[];
     tier?: string;
     estimatedSummary?: string;
+    roomArea?: number;
+    occupants?: number;
   } | null;
   onOpenLeadsManager?: () => void;
 }
 
-export const QuoteForm: React.FC<QuoteFormProps> = ({ isAdmin = false, initialConfig, onOpenLeadsManager }) => {
+export const QuoteForm: React.FC<QuoteFormProps> = ({ 
+  isAdmin = false, 
+  badge,
+  title,
+  subtitle,
+  onEditSection,
+  initialConfig, 
+  onOpenLeadsManager 
+}) => {
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [projectAddress, setProjectAddress] = useState('');
   const [projectType, setProjectType] = useState('Căn hộ dịch vụ (CHDV)');
   const [roomCount, setRoomCount] = useState('10');
+  const [roomArea, setRoomArea] = useState<number | undefined>(undefined);
+  const [occupants, setOccupants] = useState<number | undefined>(undefined);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([
     'Máy lạnh',
     'Máy tắm nóng',
@@ -36,6 +52,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ isAdmin = false, initialCo
     if (initialConfig) {
       if (initialConfig.projectType) setProjectType(initialConfig.projectType);
       if (initialConfig.roomCount) setRoomCount(initialConfig.roomCount.toString());
+      if (initialConfig.roomArea) setRoomArea(initialConfig.roomArea);
+      if (initialConfig.occupants) setOccupants(initialConfig.occupants);
       if (initialConfig.selectedItems && initialConfig.selectedItems.length > 0) {
         setSelectedCategories(initialConfig.selectedItems.map(item => item.split('(')[0].trim()));
       }
@@ -99,8 +117,11 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
       projectAddress: projectAddress.trim() || 'Chưa cung cấp',
       projectType,
       roomCount,
+      roomArea,
+      occupants,
       selectedCategories: selectedCategories.join(', '),
       notes: notes.trim(),
+      source: 'Website dienmaykdt89.com',
     };
 
     // 1. Luôn lưu vào danh sách quản lý Leads trên máy (đảm bảo 100% không mất thông tin khách)
@@ -146,29 +167,39 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-700">
               <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse" />
-              <span>Tiếp Nhận Nhu Cầu 24/7</span>
-              <span className="text-neutral-400">·</span>
-              <span className="text-neutral-600 font-normal normal-case">Phản hồi báo giá trong 30 phút</span>
+              <span>{badge || "Tiếp Nhận Nhu Cầu 24/7 · Phản hồi báo giá trong 30 phút"}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900 mt-1.5">
-              Đăng ký nhận báo giá thiết bị công trình
+              {title || "Đăng ký nhận báo giá thiết bị công trình"}
             </h2>
             <p className="text-xs sm:text-sm text-neutral-600 mt-1">
-              Điền nhanh số phòng hoặc danh sách thiết bị. KDT-89 sẽ gửi bảng chiết khấu đại lý tốt nhất trực tiếp qua điện thoại hoặc Zalo.
+              {subtitle || "Điền nhanh số phòng hoặc danh sách thiết bị. KDT-89 sẽ gửi bảng chiết khấu đại lý tốt nhất trực tiếp qua điện thoại hoặc Zalo."}
             </p>
           </div>
 
-          {isAdmin && onOpenLeadsManager && (
-            <button
-              type="button"
-              onClick={onOpenLeadsManager}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg shadow-2xs transition-colors shrink-0 cursor-pointer"
-              title="Xem danh sách khách đã gửi và hướng dẫn Google Sheets (Chỉ quản trị viên thấy)"
-            >
-              <Database className="w-3.5 h-3.5 text-amber-600" />
-              <span>Hộp thư Lead &amp; Google Sheet (Admin)</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {isAdmin && onEditSection && (
+              <button
+                type="button"
+                onClick={onEditSection}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-neutral-700 bg-white hover:bg-neutral-50 border border-neutral-300 rounded-lg shadow-2xs transition-colors shrink-0 cursor-pointer"
+              >
+                <span>✏️ Sửa Form</span>
+              </button>
+            )}
+
+            {isAdmin && onOpenLeadsManager && (
+              <button
+                type="button"
+                onClick={onOpenLeadsManager}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg shadow-2xs transition-colors shrink-0 cursor-pointer"
+                title="Xem danh sách khách đã gửi và hướng dẫn Google Sheets (Chỉ quản trị viên thấy)"
+              >
+                <Database className="w-3.5 h-3.5 text-amber-600" />
+                <span>Hộp thư Lead &amp; Google Sheet (Admin)</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Form Container */}

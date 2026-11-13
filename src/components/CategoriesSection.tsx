@@ -1,12 +1,33 @@
 import React from 'react';
 import { siteConfig } from '../config/siteConfig';
+import { EditableCategoryItem } from '../services/siteContentService';
 import { Wind, Flame, Waves, Refrigerator, Tv, UtensilsCrossed, ArrowRight } from 'lucide-react';
 
 interface CategoriesSectionProps {
+  title?: string;
+  subtitle?: string;
+  badge?: string;
+  customCategories?: EditableCategoryItem[];
+  hotlineDisplay?: string;
+  hotlineRaw?: string;
+  isAdmin?: boolean;
+  onEditSection?: () => void;
   onSelectCategoryForQuote: (categoryName: string) => void;
 }
 
-export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ onSelectCategoryForQuote }) => {
+export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ 
+  title,
+  subtitle,
+  badge,
+  customCategories,
+  hotlineDisplay,
+  hotlineRaw,
+  isAdmin = false,
+  onEditSection,
+  onSelectCategoryForQuote 
+}) => {
+  const categoriesList =
+    customCategories && customCategories.length > 0 ? customCategories : siteConfig.categories;
   const getCategoryIcon = (id: string) => {
     switch (id) {
       case 'may-lanh':
@@ -34,32 +55,42 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({ onSelectCa
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
           <div className="max-w-2xl">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-700">
-              <span>Danh Mục Hàng Công Trình</span>
-              <span className="text-neutral-400">·</span>
-              <span className="text-neutral-600 font-normal normal-case">Thiết bị điện máy đồng bộ</span>
+              <span>{badge || "Danh Mục Hàng Công Trình · Thiết bị điện máy đồng bộ"}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900 mt-2">
-              Các nhóm thiết bị chủ lực do KDT-89 cung cấp
+              {title || "Các nhóm thiết bị chủ lực do KDT-89 cung cấp"}
             </h2>
             <p className="text-sm sm:text-base text-neutral-600 mt-2 leading-relaxed">
-              KDT-89 phân phối trực tiếp từ nhà máy các thương hiệu uy tín, đảm bảo tiêu chuẩn vận hành công trình, bảo hành chính hãng và giá chiết khấu cạnh tranh.
+              {subtitle || "KDT-89 phân phối trực tiếp từ nhà máy các thương hiệu uy tín, đảm bảo tiêu chuẩn vận hành công trình, bảo hành chính hãng và giá chiết khấu cạnh tranh."}
             </p>
           </div>
 
-          <div className="shrink-0">
-            <span className="text-xs text-neutral-500 block">Tư vấn trực tiếp:</span>
-            <a
-              href={`tel:${siteConfig.contact.primaryPhone}`}
-              className="text-base font-bold text-neutral-900 hover:text-amber-600 transition-colors"
-            >
-              {siteConfig.contact.hotlines[0].display}
-            </a>
+          <div className="flex items-center gap-3 shrink-0">
+            {isAdmin && onEditSection && (
+              <button
+                type="button"
+                onClick={onEditSection}
+                className="px-2.5 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-semibold border border-neutral-300 cursor-pointer"
+              >
+                ✏️ Sửa Danh Mục
+              </button>
+            )}
+
+            <div>
+              <span className="text-xs text-neutral-500 block">Tư vấn trực tiếp:</span>
+              <a
+                href={`tel:${hotlineRaw || siteConfig.contact.primaryPhone}`}
+                className="text-base font-bold text-neutral-900 hover:text-amber-600 transition-colors"
+              >
+                {hotlineDisplay || siteConfig.contact.hotlines[0].display}
+              </a>
+            </div>
           </div>
         </div>
 
         {/* 6 Categories Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {siteConfig.categories.map((cat, index) => {
+          {categoriesList.map((cat, index) => {
             const isMarquee = index === 0; // Máy lạnh is marquee category
             return (
               <div

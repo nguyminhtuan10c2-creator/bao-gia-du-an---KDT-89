@@ -1,0 +1,232 @@
+{
+  "entities": {
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Website titles, subtitles, section order, visibility toggles and custom content sections.",
+      "type": "object",
+      "properties": {
+        "heroTitle": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Main hero banner headline"
+        },
+        "heroSubtitle": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Hero banner subtitle explanation"
+        },
+        "heroBadge": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Top badge in hero section"
+        },
+        "quoteTitle": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Title of the quote request form"
+        },
+        "quoteSubtitle": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Subtitle of the quote request form"
+        },
+        "roomSetupTitle": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Title of the interactive room interior visualizer"
+        },
+        "roomSetupSubtitle": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Subtitle for the room visualizer"
+        },
+        "estimatorTitle": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Title of the rapid project estimator section"
+        },
+        "estimatorSubtitle": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Subtitle of the rapid project estimator section"
+        },
+        "categoriesTitle": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Title of the appliance categories section"
+        },
+        "categoriesSubtitle": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Subtitle of the appliance categories section"
+        },
+        "projectTypesTitle": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Title of project solutions section"
+        },
+        "projectTypesSubtitle": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Subtitle of project solutions section"
+        },
+        "stepsTitle": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Title of the 4-step workflow section"
+        },
+        "stepsSubtitle": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Subtitle of the 4-step workflow section"
+        },
+        "evidenceTitle": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Title of real warehouse gallery section"
+        },
+        "evidenceSubtitle": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Subtitle of real warehouse gallery section"
+        },
+        "sectionsVisibility": {
+          "type": "object",
+          "description": "Mapping of section ID to boolean visibility flag"
+        },
+        "sectionsOrder": {
+          "type": "array",
+          "description": "Ordered array of section keys"
+        },
+        "customSections": {
+          "type": "array",
+          "description": "Admin added custom content sections"
+        },
+        "roomModels": {
+          "type": "array",
+          "description": "Array of 3D room models and render configurations"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["updatedAt"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "Customer project quote request submitted from the website.",
+      "type": "object",
+      "properties": {
+        "fullName": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Customer name or building representative"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Customer phone number or Zalo"
+        },
+        "projectAddress": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "District or project address"
+        },
+        "projectType": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Project typology like CHDV, Hotel, Motels"
+        },
+        "roomCount": {
+          "type": "number",
+          "description": "Total number of rooms"
+        },
+        "roomArea": {
+          "type": "number",
+          "description": "Optional room area in square meters"
+        },
+        "occupants": {
+          "type": "number",
+          "description": "Optional expected occupants per room"
+        },
+        "selectedCategories": {
+          "type": "array",
+          "description": "List of selected equipment names"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Customer notes, requirements or room setup breakdown"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["new", "contacted", "quoted", "done"],
+          "description": "Status of the lead"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when the lead was generated"
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Source of submission (e.g. quote_form, room_visualizer)"
+        }
+      },
+      "required": ["fullName", "phoneNumber", "createdAt"]
+    },
+    "RoomPreset": {
+      "title": "RoomPreset",
+      "description": "Preset interior room appliances package configuration.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Preset display name"
+        },
+        "area": {
+          "type": "number",
+          "description": "Area in square meters"
+        },
+        "occupants": {
+          "type": "number",
+          "description": "Occupant count"
+        },
+        "roomType": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Room category type"
+        },
+        "recommendedItems": {
+          "type": "array",
+          "description": "List of appliance recommendation descriptions"
+        },
+        "estimatedTotal": {
+          "type": "number",
+          "description": "Estimated bundle price in VND"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp"
+        }
+      },
+      "required": ["name", "area", "occupants"]
+    }
+  },
+  "firestore": {
+    "/site_settings/{settingId}": {
+      "schema": "SiteSettings",
+      "description": "Stores site header titles, section orders, and custom sections configuration."
+    },
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Stores client quote requests and lead submissions."
+    },
+    "/room_presets/{presetId}": {
+      "schema": "RoomPreset",
+      "description": "Stores preconfigured room interior electrical appliance packages."
+    }
+  }
+}

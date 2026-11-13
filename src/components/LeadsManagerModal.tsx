@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getStoredLeads, updateLeadStatus, exportLeadsToCSV, LeadRecord } from '../utils/leadStorage';
+import { getStoredLeads, updateLeadStatus, exportLeadsToCSV, fetchLeadsFromFirebase, LeadRecord } from '../utils/leadStorage';
 import { siteConfig, FORM_ENDPOINT } from '../config/siteConfig';
-import { X, Download, Phone, MessageCircle, FileSpreadsheet, Copy, Check, Clock, ShieldCheck, HelpCircle } from 'lucide-react';
+import { X, Download, Phone, MessageCircle, FileSpreadsheet, Copy, Check, Clock, ShieldCheck, HelpCircle, Cloud, RefreshCw } from 'lucide-react';
 
 interface LeadsManagerModalProps {
   isOpen: boolean;
@@ -12,10 +12,24 @@ export const LeadsManagerModal: React.FC<LeadsManagerModalProps> = ({ isOpen, on
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [activeTab, setActiveTab] = useState<'leads' | 'guide'>('leads');
   const [copiedCode, setCopiedCode] = useState(false);
+  const [isLoadingFirebase, setIsLoadingFirebase] = useState(false);
+
+  const loadAllLeads = async () => {
+    setLeads(getStoredLeads());
+    setIsLoadingFirebase(true);
+    try {
+      const remote = await fetchLeadsFromFirebase();
+      setLeads(remote);
+    } catch {
+      // ignore
+    } finally {
+      setIsLoadingFirebase(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
-      setLeads(getStoredLeads());
+      loadAllLeads();
     }
   }, [isOpen]);
 
@@ -23,7 +37,7 @@ export const LeadsManagerModal: React.FC<LeadsManagerModalProps> = ({ isOpen, on
 
   const handleStatusChange = (id: string, status: LeadRecord['status']) => {
     updateLeadStatus(id, status);
-    setLeads(getStoredLeads());
+    setLeads(prev => prev.map(item => item.id === id ? { ...item, status } : item));
   };
 
   const appsScriptCode = `// ====================================================================
@@ -187,7 +201,7 @@ function doPost(e) {
 
           {activeTab === 'leads' && leads.length > 0 && (
             <button
-              onClick={exportLeadsToCSV}
+              onClick={() => exportLeadsToCSV(leads)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-neutral-800 bg-white hover:bg-neutral-100 border border-neutral-300 rounded-lg shadow-2xs mb-2 transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-emerald-600" />

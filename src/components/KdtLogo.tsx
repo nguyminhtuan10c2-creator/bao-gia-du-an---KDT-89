@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { siteConfig } from '../config/siteConfig';
+import { getLocalMediaAssets } from '../services/mediaSyncService';
 
 interface KdtLogoProps {
   className?: string;
@@ -8,16 +9,13 @@ interface KdtLogoProps {
 
 export const KdtLogo: React.FC<KdtLogoProps> = ({ className = "w-10 h-10", size }) => {
   const [customLogo, setCustomLogo] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('kdt_custom_logo') || siteConfig.brand.logoUrl || null;
-    }
-    return siteConfig.brand.logoUrl || null;
+    return getLocalMediaAssets().logoUrl || siteConfig.brand.logoUrl || null;
   });
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     const handleUpdate = () => {
-      const stored = localStorage.getItem('kdt_custom_logo');
+      const stored = getLocalMediaAssets().logoUrl;
       if (stored) {
         setCustomLogo(stored);
         setImgError(false);

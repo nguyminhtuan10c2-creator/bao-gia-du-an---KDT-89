@@ -1,8 +1,30 @@
 import React from 'react';
 import { siteConfig } from '../config/siteConfig';
+import { EditableStepItem } from '../services/siteContentService';
 import { Send, CheckCircle, FileSpreadsheet, Truck } from 'lucide-react';
 
-export const StepsSection: React.FC = () => {
+interface StepsSectionProps {
+  title?: string;
+  subtitle?: string;
+  badge?: string;
+  customSteps?: EditableStepItem[];
+  hotlineDisplay?: string;
+  hotlineRaw?: string;
+  isAdmin?: boolean;
+  onEditSection?: () => void;
+}
+
+export const StepsSection: React.FC<StepsSectionProps> = ({
+  title,
+  subtitle,
+  badge,
+  customSteps,
+  hotlineDisplay,
+  hotlineRaw,
+  isAdmin = false,
+  onEditSection,
+}) => {
+  const stepsList = customSteps && customSteps.length > 0 ? customSteps : siteConfig.steps;
   const getStepIcon = (index: number) => {
     switch (index) {
       case 0:
@@ -23,23 +45,33 @@ export const StepsSection: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="max-w-3xl mb-12">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-700">
-            <span>Quy Trình Làm Việc KDT-89</span>
-            <span className="text-neutral-400">·</span>
-            <span className="text-neutral-600 font-normal normal-case">Nhanh chóng & Rõ ràng</span>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+          <div className="max-w-3xl">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-700">
+              <span>{badge || "Quy Trình Làm Việc KDT-89 · Nhanh chóng & Rõ ràng"}</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900 mt-2">
+              {title || "4 bước tinh gọn từ lúc gửi nhu cầu đến bàn giao công trình"}
+            </h2>
+            <p className="text-sm sm:text-base text-neutral-600 mt-2 leading-relaxed">
+              {subtitle || "Chúng tôi hiểu tiến độ thi công công trình rất gấp gáp. KDT-89 cam kết phản hồi báo giá trong 30-60 phút và sắp xếp xe giao hàng theo tiến độ hoàn thiện từng phòng."}
+            </p>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900 mt-2">
-            4 bước tinh gọn từ lúc gửi nhu cầu đến bàn giao công trình
-          </h2>
-          <p className="text-sm sm:text-base text-neutral-600 mt-2 leading-relaxed">
-            Chúng tôi hiểu tiến độ thi công công trình rất gấp gáp. KDT-89 cam kết phản hồi báo giá trong 30-60 phút và sắp xếp xe giao hàng theo tiến độ hoàn thiện từng phòng.
-          </p>
+
+          {isAdmin && onEditSection && (
+            <button
+              type="button"
+              onClick={onEditSection}
+              className="px-2.5 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-semibold border border-neutral-300 self-start shrink-0 cursor-pointer"
+            >
+              ✏️ Sửa Quy Trình
+            </button>
+          )}
         </div>
 
         {/* 4 Steps Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-          {siteConfig.steps.map((item, index) => (
+          {stepsList.map((item, index) => (
             <div
               key={item.step}
               className="relative p-6 rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 transition-all flex flex-col justify-between"
@@ -82,16 +114,16 @@ export const StepsSection: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <a
-              href={siteConfig.contact.primaryZaloUrl}
+              href={hotlineRaw ? `https://zalo.me/${hotlineRaw}` : siteConfig.contact.primaryZaloUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="font-bold text-blue-700 hover:text-blue-800 underline underline-offset-2"
             >
-              Zalo: {siteConfig.contact.hotlines[0].display}
+              Zalo: {hotlineDisplay || siteConfig.contact.hotlines[0].display}
             </a>
             <span className="text-neutral-400">hoặc</span>
             <a
-              href={`tel:${siteConfig.contact.primaryPhone}`}
+              href={`tel:${hotlineRaw || siteConfig.contact.primaryPhone}`}
               className="font-bold text-amber-700 hover:text-amber-800"
             >
               Gọi hotline ngay

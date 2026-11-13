@@ -3,17 +3,40 @@ import { siteConfig } from '../config/siteConfig';
 import { KdtLogo } from './KdtLogo';
 import { Phone, MessageCircle, Menu, X, ArrowUpRight } from 'lucide-react';
 
+interface HotlineItem {
+  display: string;
+  raw: string;
+  label: string;
+  zalo?: string;
+}
+
 interface HeaderProps {
   isAdmin?: boolean;
+  brandName?: string;
+  ctaText?: string;
+  hotline1?: HotlineItem;
+  hotline2?: HotlineItem;
   onOpenQuote: () => void;
+  onOpenRoomVisualizer?: () => void;
   onOpenLeadsManager?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isAdmin = false, onOpenQuote, onOpenLeadsManager }) => {
+export const Header: React.FC<HeaderProps> = ({
+  isAdmin = false,
+  brandName,
+  ctaText,
+  hotline1: customHotline1,
+  hotline2: customHotline2,
+  onOpenQuote,
+  onOpenRoomVisualizer,
+  onOpenLeadsManager,
+}) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const hotline1 = siteConfig.contact.hotlines[0] || { display: "0918 064 167", raw: "0918064167", label: "Ms. Ngọc", zalo: "https://zalo.me/0918064167" };
-  const hotline2 = siteConfig.contact.hotlines[1] || { display: "0903 667 355", raw: "0903667355", label: "Mr. Dũng", zalo: "https://zalo.me/0903667355" };
+  const defaultH1 = siteConfig.contact.hotlines[0] || { display: "0918 064 167", raw: "0918064167", label: "Ms. Ngọc", zalo: "https://zalo.me/0918064167" };
+  const defaultH2 = siteConfig.contact.hotlines[1] || { display: "0903 667 355", raw: "0903667355", label: "Mr. Dũng", zalo: "https://zalo.me/0903667355" };
+  const hotline1 = customHotline1?.display ? { ...defaultH1, ...customHotline1, zalo: `https://zalo.me/${customHotline1.raw || defaultH1.raw}` } : defaultH1;
+  const hotline2 = customHotline2?.display ? { ...defaultH2, ...customHotline2, zalo: `https://zalo.me/${customHotline2.raw || defaultH2.raw}` } : defaultH2;
 
   return (
     <div className="sticky top-0 z-40">
@@ -74,13 +97,21 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin = false, onOpenQuote, on
             >
               <KdtLogo className="w-7 h-7 sm:w-11 sm:h-11 group-hover:scale-105 transition-transform shrink-0" />
               <span className="text-sm xs:text-base sm:text-2xl md:text-3xl font-black tracking-tight text-orange-600 group-hover:text-orange-700 transition-colors drop-shadow-xs truncate">
-                {siteConfig.brand.name}
+                {brandName || siteConfig.brand.name}
               </span>
             </a>
 
             {/* Zone 2: Navigation Links */}
-            <nav className="hidden xl:flex items-center gap-6 text-sm font-medium text-neutral-700">
-              <a href="#form-bao-gia" className="hover:text-orange-600 transition-colors font-semibold text-orange-600">
+            <nav className="hidden xl:flex items-center gap-5 text-sm font-medium text-neutral-700">
+              <button
+                type="button"
+                onClick={onOpenRoomVisualizer}
+                className="hover:text-orange-600 transition-colors font-bold text-orange-600 flex items-center gap-1 cursor-pointer"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
+                <span>Setup Căn Phòng</span>
+              </button>
+              <a href="#form-bao-gia" className="hover:text-orange-600 transition-colors">
                 Nhận Báo Giá
               </a>
               <a href="#du-toan" className="hover:text-orange-600 transition-colors">
@@ -104,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin = false, onOpenQuote, on
                 onClick={onOpenQuote}
                 className="inline-flex items-center gap-0.5 sm:gap-1 px-2 py-1 sm:px-4 sm:py-2 text-[10px] sm:text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 active:bg-orange-800 rounded-md sm:rounded-lg shadow-xs transition-colors whitespace-nowrap cursor-pointer"
               >
-                <span>Nhận Báo Giá</span>
+                <span>{ctaText || 'Nhận Báo Giá'}</span>
                 <ArrowUpRight className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
               </button>
 
@@ -124,6 +155,17 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin = false, onOpenQuote, on
         {mobileMenuOpen && (
           <div className="xl:hidden border-t border-neutral-200 bg-white px-4 pt-3 pb-6 space-y-4 shadow-xl">
             <div className="flex flex-col space-y-2 text-sm font-medium text-neutral-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (onOpenRoomVisualizer) onOpenRoomVisualizer();
+                }}
+                className="w-full text-left px-3 py-2 rounded-md bg-orange-50 text-orange-700 font-bold flex items-center justify-between cursor-pointer"
+              >
+                <span>Ảnh Căn Hộ &amp; Setup Thiết Bị</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-600 text-white font-bold">Mở</span>
+              </button>
               <a
                 href="#form-bao-gia"
                 onClick={() => setMobileMenuOpen(false)}

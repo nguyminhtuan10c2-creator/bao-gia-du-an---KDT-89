@@ -4,6 +4,11 @@ import { KdtLogo } from './KdtLogo';
 import { CheckSquare, Square, ArrowRight, MessageCircle, Check } from 'lucide-react';
 
 interface ProjectEstimatorProps {
+  title?: string;
+  subtitle?: string;
+  badge?: string;
+  isAdmin?: boolean;
+  onEditSection?: () => void;
   onApplyToQuote: (config: {
     projectType: string;
     roomCount: number;
@@ -94,7 +99,14 @@ const EQUIPMENT_CATALOG: EquipmentOption[] = [
   },
 ];
 
-export const ProjectEstimator: React.FC<ProjectEstimatorProps> = ({ onApplyToQuote }) => {
+export const ProjectEstimator: React.FC<ProjectEstimatorProps> = ({ 
+  title,
+  subtitle,
+  badge,
+  isAdmin = false,
+  onEditSection,
+  onApplyToQuote 
+}) => {
   const roomCountId = useId();
   const [selectedProjectType, setSelectedProjectType] = useState<string>("chdv");
   const [roomCount, setRoomCount] = useState<number>(10);
@@ -174,19 +186,31 @@ Nhờ KDT-89 gửi bảng báo giá chi tiết và phương án chiết khấu q
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header: Nền trắng, Chữ to MÀU CAM, Chữ nhỏ MÀU ĐEN */}
-        <div className="max-w-3xl mb-10">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-900">
-            <KdtLogo className="w-5 h-5 shrink-0" />
-            <span>Công Cụ Dự Toán Báo Giá KDT-89</span>
-            <span className="text-neutral-300">·</span>
-            <span className="text-neutral-700 font-medium normal-case">Ước tính quy mô &amp; ngân sách tức thì</span>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+          <div className="max-w-3xl">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-900">
+              <KdtLogo className="w-5 h-5 shrink-0" />
+              <span>{badge || "Công Cụ Dự Toán Báo Giá KDT-89"}</span>
+              <span className="text-neutral-300">·</span>
+              <span className="text-neutral-700 font-medium normal-case">Ước tính quy mô &amp; ngân sách tức thì</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-orange-600 mt-2">
+              {title || "Tính toán nhanh danh mục thiết bị theo số phòng"}
+            </h2>
+            <p className="text-sm sm:text-base text-neutral-800 mt-2 leading-relaxed font-normal">
+              {subtitle || "Chọn mô hình công trình, số phòng và nhóm thiết bị để ước tính số lượng và ngân sách sơ bộ. Bạn có thể gửi cấu hình này trực tiếp cho chuyên viên KDT-89 để chốt đơn giá chiết khấu dự án."}
+            </p>
           </div>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-orange-600 mt-2">
-            Tính toán nhanh danh mục thiết bị theo số phòng
-          </h2>
-          <p className="text-sm sm:text-base text-neutral-800 mt-2 leading-relaxed font-normal">
-            Chọn mô hình công trình, số phòng và nhóm thiết bị để ước tính số lượng và ngân sách sơ bộ. Bạn có thể gửi cấu hình này trực tiếp cho chuyên viên KDT-89 để chốt đơn giá chiết khấu dự án.
-          </p>
+
+          {isAdmin && onEditSection && (
+            <button
+              type="button"
+              onClick={onEditSection}
+              className="px-2.5 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-semibold border border-neutral-300 self-start shrink-0 cursor-pointer"
+            >
+              ✏️ Sửa Dự Toán
+            </button>
+          )}
         </div>
 
         {/* Main Interactive Grid */}

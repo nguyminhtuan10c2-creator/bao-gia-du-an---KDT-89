@@ -1,21 +1,40 @@
 import React from 'react';
 import { siteConfig } from '../config/siteConfig';
 import { KdtLogo } from './KdtLogo';
-import { Phone, MapPin, Clock, MessageCircle, ShieldCheck } from 'lucide-react';
+import { Phone, MapPin, Clock, ShieldCheck, Lock } from 'lucide-react';
+
+interface HotlineItem {
+  display: string;
+  raw: string;
+  label: string;
+}
 
 interface FooterProps {
   isAdmin?: boolean;
+  brandName?: string;
+  aboutText?: string;
+  contactAddress?: string;
+  contactWorkingHours?: string;
+  hotlines?: HotlineItem[];
   onOpenLeadsManager?: () => void;
   onOpenAdminMedia?: () => void;
+  onOpenContentLayout?: () => void;
   onToggleAdmin?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ 
-  isAdmin = false, 
+  isAdmin = false,
+  brandName,
+  aboutText,
+  contactAddress,
+  contactWorkingHours,
+  hotlines: customHotlines,
   onOpenLeadsManager, 
   onOpenAdminMedia,
+  onOpenContentLayout,
   onToggleAdmin 
 }) => {
+  const displayHotlines = customHotlines && customHotlines.length > 0 ? customHotlines : siteConfig.contact.hotlines;
   const [clickCount, setClickCount] = React.useState(0);
 
   const handleCopyrightClick = () => {
@@ -41,7 +60,7 @@ export const Footer: React.FC<FooterProps> = ({
               <KdtLogo className="w-10 h-10 shrink-0" />
               <div>
                 <span className="text-2xl font-black tracking-tight text-orange-500 block">
-                  {siteConfig.brand.name}
+                  {brandName || siteConfig.brand.name}
                 </span>
                 <span className="text-xs text-neutral-400 font-medium mt-0.5 block">
                   {siteConfig.brand.legalName}
@@ -50,7 +69,7 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
 
             <p className="text-neutral-400 leading-relaxed max-w-sm">
-              {siteConfig.brand.tagline}. Kênh phân phối, tư vấn và báo giá thiết bị điện máy chính hãng cho các công trình nhà trọ, căn hộ dịch vụ (CHDV), khách sạn và dân dụng tại TP.HCM và các tỉnh lân cận.
+              {aboutText || `${siteConfig.brand.tagline}. Kênh phân phối, tư vấn và báo giá thiết bị điện máy chính hãng cho các công trình nhà trọ, căn hộ dịch vụ (CHDV), khách sạn và dân dụng tại TP.HCM và các tỉnh lân cận.`}
             </p>
 
             <div className="flex items-center gap-2 text-neutral-300">
@@ -69,19 +88,19 @@ export const Footer: React.FC<FooterProps> = ({
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <span className="leading-snug">
-                  {siteConfig.contact.address}
+                  {contactAddress || siteConfig.contact.address}
                 </span>
               </div>
 
               <div className="flex items-start gap-2.5">
                 <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <span>
-                  {siteConfig.contact.workingHours}
+                  {contactWorkingHours || siteConfig.contact.workingHours}
                 </span>
               </div>
 
               <div className="flex flex-col gap-1 pt-1">
-                {siteConfig.contact.hotlines.map((hotline, idx) => (
+                {displayHotlines.map((hotline, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <Phone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                     <span className="text-neutral-400">{hotline.label}:</span>
@@ -158,6 +177,20 @@ export const Footer: React.FC<FooterProps> = ({
             </a>
             <span>·</span>
             <span>Kho TP. Hồ Chí Minh</span>
+            {onToggleAdmin && (
+              <>
+                <span>·</span>
+                <button
+                  type="button"
+                  onClick={onToggleAdmin}
+                  className="inline-flex items-center gap-1 text-neutral-500 hover:text-orange-400 transition-colors cursor-pointer"
+                  title="Đăng nhập Quản trị viên KDT-89"
+                >
+                  <Lock className="w-3 h-3" />
+                  <span>{isAdmin ? 'Thoát Admin' : 'Quản trị'}</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -169,6 +202,15 @@ export const Footer: React.FC<FooterProps> = ({
               <span>Chế độ Quản trị viên (Chỉ bạn thấy khi vào link ?admin):</span>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
+              {onOpenContentLayout && (
+                <button
+                  type="button"
+                  onClick={onOpenContentLayout}
+                  className="px-2.5 py-1 rounded bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 font-medium transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <span>📝 Quản lý Tiêu đề &amp; Bố cục (Firebase)</span>
+                </button>
+              )}
               {onOpenLeadsManager && (
                 <button
                   type="button"

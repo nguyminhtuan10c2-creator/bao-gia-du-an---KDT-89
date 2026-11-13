@@ -1,12 +1,31 @@
 import React from 'react';
 import { siteConfig } from '../config/siteConfig';
+import { EditableProjectTypeItem } from '../services/siteContentService';
 import { Building2, Home, Hotel, Construction, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 interface ProjectTypesSectionProps {
+  title?: string;
+  subtitle?: string;
+  badge?: string;
+  customProjectTypes?: EditableProjectTypeItem[];
+  isAdmin?: boolean;
+  onEditSection?: () => void;
   onSelectProjectForQuote: (projectTitle: string) => void;
 }
 
-export const ProjectTypesSection: React.FC<ProjectTypesSectionProps> = ({ onSelectProjectForQuote }) => {
+export const ProjectTypesSection: React.FC<ProjectTypesSectionProps> = ({ 
+  title,
+  subtitle,
+  badge,
+  customProjectTypes,
+  isAdmin = false,
+  onEditSection,
+  onSelectProjectForQuote 
+}) => {
+  const projectList =
+    customProjectTypes && customProjectTypes.length > 0
+      ? customProjectTypes
+      : siteConfig.projectTypes;
   const getProjectIcon = (id: string) => {
     switch (id) {
       case 'nha-tro':
@@ -27,23 +46,33 @@ export const ProjectTypesSection: React.FC<ProjectTypesSectionProps> = ({ onSele
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="max-w-3xl mb-12">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-700">
-            <span>Giải Pháp Cho Từng Mô Hình</span>
-            <span className="text-neutral-400">·</span>
-            <span className="text-neutral-600 font-normal normal-case">Tư vấn đúng bài toán đầu tư</span>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+          <div className="max-w-3xl">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-700">
+              <span>{badge || "Giải Pháp Cho Từng Mô Hình · Tư vấn đúng bài toán đầu tư"}</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900 mt-2">
+              {title || "Phương án thiết bị theo từng loại hình công trình"}
+            </h2>
+            <p className="text-sm sm:text-base text-neutral-600 mt-2 leading-relaxed">
+              {subtitle || "Mỗi mô hình lưu trú và công trình có bài toán chi phí, độ bền và tiêu thụ điện khác nhau. KDT-89 đề xuất cấu hình phù hợp để chủ đầu tư tối ưu ngân sách mà vẫn vận hành ổn định."}
+            </p>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900 mt-2">
-            Phương án thiết bị theo từng loại hình công trình
-          </h2>
-          <p className="text-sm sm:text-base text-neutral-600 mt-2 leading-relaxed">
-            Mỗi mô hình lưu trú và công trình có bài toán chi phí, độ bền và tiêu thụ điện khác nhau. KDT-89 đề xuất cấu hình phù hợp để chủ đầu tư tối ưu ngân sách mà vẫn vận hành ổn định.
-          </p>
+
+          {isAdmin && onEditSection && (
+            <button
+              type="button"
+              onClick={onEditSection}
+              className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-neutral-100 text-neutral-700 text-xs font-semibold border border-neutral-300 self-start shrink-0 cursor-pointer"
+            >
+              ✏️ Sửa Mô Hình
+            </button>
+          )}
         </div>
 
         {/* 4 Project Types Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-          {siteConfig.projectTypes.map((project) => (
+          {projectList.map((project) => (
             <div
               key={project.id}
               className="bg-white rounded-xl border border-neutral-200 p-6 sm:p-7 flex flex-col justify-between hover:border-neutral-300 hover:shadow-sm transition-all"

@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation helper for SiteSettings
+    function isValidSiteSettings(data) {
+      return data.keys().hasAll(['updatedAt']) &&
+        data.updatedAt is string &&
+        (!('heroTitle' in data) || (data.heroTitle is string && data.heroTitle.size() <= 500)) &&
+        (!('heroSubtitle' in data) || (data.heroSubtitle is string && data.heroSubtitle.size() <= 1500)) &&
+        (!('quoteTitle' in data) || (data.quoteTitle is string && data.quoteTitle.size() <= 500)) &&
+        (!('sectionsVisibility' in data) || data.sectionsVisibility is map) &&
+        (!('sectionsOrder' in data) || data.sectionsOrder is list) &&
+        (!('customSections' in data) || data.customSections is list) &&
+        (!('roomModels' in data) || data.roomModels is list);
+    }
+
+    // Validation helper for Lead
+    function isValidLead(data) {
+      return data.keys().hasAll(['fullName', 'phoneNumber', 'createdAt']) &&
+        data.fullName is string && data.fullName.size() > 0 && data.fullName.size() <= 200 &&
+        data.phoneNumber is string && data.phoneNumber.size() > 0 && data.phoneNumber.size() <= 50 &&
+        data.createdAt is string && data.createdAt.size() <= 100 &&
+        (!('projectAddress' in data) || (data.projectAddress is string && data.projectAddress.size() <= 500)) &&
+        (!('projectType' in data) || (data.projectType is string && data.projectType.size() <= 200)) &&
+        (!('roomCount' in data) || data.roomCount is number) &&
+        (!('roomArea' in data) || data.roomArea is number) &&
+        (!('occupants' in data) || data.occupants is number) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 3000)) &&
+        (!('selectedCategories' in data) || (data.selectedCategories is list && data.selectedCategories.size() <= 50)) &&
+        (!('status' in data) || (data.status in ['new', 'contacted', 'quoted', 'done']));
+    }
+
+    // Validation helper for RoomPreset
+    function isValidRoomPreset(data) {
+      return data.keys().hasAll(['name', 'area', 'occupants']) &&
+        data.name is string && data.name.size() <= 200 &&
+        data.area is number &&
+        data.occupants is number &&
+        (!('recommendedItems' in data) || data.recommendedItems is list);
+    }
+
+    // Collection 1: site_settings
+    // Anyone can read site configuration to display dynamic titles and layout
+    // Writes are validated to prevent corrupting layout
+    match /site_settings/{settingId} {
+      allow get, list: if isValidId(settingId);
+      allow create, update: if isValidId(settingId) && isValidSiteSettings(incoming());
+      allow delete: if false;
+    }
+
+    // Collection 2: leads
+    // Anyone can submit a lead request (create), must conform to isValidLead
+    // Reading and updating leads is permitted for management
+    match /leads/{leadId} {
+      allow create: if isValidId(leadId) && isValidLead(incoming());
+      allow get, list: if isValidId(leadId);
+      allow update: if isValidId(leadId) && isValidLead(incoming());
+      allow delete: if isValidId(leadId);
+    }
+
+    // Collection 3: room_presets
+    match /room_presets/{presetId} {
+      allow get, list: if isValidId(presetId);
+      allow create, update: if isValidId(presetId) && isValidRoomPreset(incoming());
+      allow delete: if isValidId(presetId);
+    }
+  }
+}
