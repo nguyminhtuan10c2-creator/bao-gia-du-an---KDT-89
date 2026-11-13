@@ -2,6 +2,7 @@ import React from 'react';
 import { siteConfig } from '../config/siteConfig';
 import { KdtLogo } from './KdtLogo';
 import { Phone, MapPin, Clock, ShieldCheck, Lock } from 'lucide-react';
+import { trackEvent } from '../utils/analytics';
 
 interface HotlineItem {
   display: string;
@@ -172,7 +173,13 @@ export const Footer: React.FC<FooterProps> = ({
               Đăng ký báo giá
             </a>
             <span>·</span>
-            <a href={siteConfig.contact.primaryZaloUrl} target="_blank" rel="noopener noreferrer" className="hover:text-neutral-300 transition-colors">
+            <a
+              href={siteConfig.contact.primaryZaloUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackEvent('click_zalo', { location: 'footer' })}
+              className="hover:text-neutral-300 transition-colors"
+            >
               Zalo {siteConfig.contact.hotlines[0].display}
             </a>
             <span>·</span>

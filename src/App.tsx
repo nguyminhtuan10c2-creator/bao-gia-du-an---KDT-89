@@ -28,9 +28,13 @@ import {
   saveSiteSettingsToFirebase 
 } from './services/siteContentService';
 import { subscribeToMediaAssets } from './services/mediaSyncService';
+import { detectLandingPresetFromUrl, LandingPresetConfig } from './utils/landingPresets';
+import { trackEvent } from './utils/analytics';
 import { SlidersHorizontal, Images, LogOut } from 'lucide-react';
 
 export default function App() {
+  const [landingPreset] = useState<LandingPresetConfig | null>(() => detectLandingPresetFromUrl());
+
   const [quoteConfig, setQuoteConfig] = useState<{
     projectType?: string;
     roomCount?: number;
@@ -39,7 +43,15 @@ export default function App() {
     estimatedSummary?: string;
     roomArea?: number;
     occupants?: number;
-  } | null>(null);
+  } | null>(() => {
+    const preset = detectLandingPresetFromUrl();
+    if (!preset) return null;
+    return {
+      projectType: preset.projectTypeTitle,
+      roomCount: preset.defaultRoomCount,
+      selectedItems: preset.defaultCategories,
+    };
+  });
 
   const [siteSettings, setSiteSettings] = useState<SiteSettingsData>(getLocalSiteSettings);
   const [isLeadsManagerOpen, setIsLeadsManagerOpen] = useState(false);
@@ -64,8 +76,13 @@ export default function App() {
     }
   });
 
-  // Tự động kiểm tra URL khi tải trang: nếu có ?admin và chưa đăng nhập thì hiện bảng nhập mật khẩu
+  // Tự động kiểm tra URL khi tải trang: nếu có ?admin thì hiện bảng nhập mật khẩu + ghi nhận page_view
   useEffect(() => {
+    trackEvent('page_view', {
+      landing_model: landingPreset?.id || 'default',
+      path: window.location.pathname + window.location.search,
+    });
+
     try {
       const params = new URLSearchParams(window.location.search);
       if (params.has('admin') || params.get('kdt') === 'admin') {
@@ -77,7 +94,7 @@ export default function App() {
     } catch {
       // ignore
     }
-  }, []);
+  }, [landingPreset]);
 
   // Lắng nghe cập nhật Firebase Firestore cho site_settings & media theo thời gian thực
   useEffect(() => {
@@ -209,9 +226,9 @@ export default function App() {
         return (
           <Hero
             key="hero"
-            badge={siteSettings.heroBadge}
-            title={siteSettings.heroTitle}
-            subtitle={siteSettings.heroSubtitle}
+            badge={landingPreset?.heroBadge || siteSettings.heroBadge}
+            title={landingPreset?.heroHeadline || siteSettings.heroTitle}
+            subtitle={landingPreset?.heroDescription || siteSettings.heroSubtitle}
             ctaPrimary={siteSettings.heroCtaPrimary}
             ctaSecondary={siteSettings.heroCtaSecondary}
             contactAddress={siteSettings.contactAddress}
@@ -249,6 +266,8 @@ export default function App() {
             badge={siteSettings.quoteBadge}
             title={siteSettings.quoteTitle}
             subtitle={siteSettings.quoteSubtitle}
+            customCategories={siteSettings.customCategories}
+            landingModelId={landingPreset?.id}
             isAdmin={isAdmin}
             onEditSection={() => openEditSpecificSection('quote_form')}
             initialConfig={quoteConfig} 
@@ -263,6 +282,9 @@ export default function App() {
             badge={siteSettings.estimatorBadge}
             title={siteSettings.estimatorTitle}
             subtitle={siteSettings.estimatorSubtitle}
+            initialProjectTypeId={landingPreset?.estimatorProjectId}
+            initialRoomCount={landingPreset?.defaultRoomCount}
+            initialEquipmentIds={landingPreset?.defaultEstimatorIds}
             isAdmin={isAdmin}
             onEditSection={() => openEditSpecificSection('project_estimator')}
             onApplyToQuote={handleApplyFromEstimator} 
@@ -336,7 +358,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-50 text-neutral-900 selection:bg-amber-100 selection:text-amber-900">
+    <div className="min-h-screen flex flex-col bg-neutral-50 text-neutral-900 selection:bg-amber-100 selection:text-amber-900 overflow-x-hidden">
       {/* 1. Header (Top Bar Contract) */}
       <Header 
         isAdmin={isAdmin}

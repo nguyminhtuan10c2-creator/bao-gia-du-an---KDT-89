@@ -27,6 +27,7 @@ import {
 import { siteConfig } from '../config/siteConfig';
 import { RoomModelItem, DEFAULT_ROOM_MODELS } from '../services/siteContentService';
 import { RoomSlideshowViewer, SlideApplianceId, SlideApplianceBadge } from './RoomSlideshowViewer';
+import { trackEvent } from '../utils/analytics';
 
 export interface RoomConfigSelection {
   area: number;
@@ -77,10 +78,10 @@ interface ApplianceInfo {
 const DEFAULT_3D_ROOM_IMAGE = '/assets/rooms/chdv_bedroom_ac_tv.jpg';
 
 export const RoomVisualizerSection: React.FC<RoomVisualizerProps> = ({
-  title = "Setup Thiết Bị Nội Thất Chuẩn Theo Diện Tích & Số Người",
-  subtitle = "Mô phỏng mặt bằng căn phòng thực tế theo số m² và người ở. KDT-89 tự động tính toán đúng công suất máy lạnh, dung tích tủ lạnh và thiết bị tối ưu chi phí.",
-  badge = "Mô Phỏng Căn Phòng Trực Quan",
-  toggleCtaText = "Xem Hình Ảnh Căn Hộ & Setup Thiết Bị",
+  title = "Chọn cấu hình mẫu theo diện tích phòng",
+  subtitle = "Tham khảo bố trí và công suất thiết bị gợi ý theo diện tích (15m² - 40m²) và số người ở.",
+  badge = "Cấu hình mẫu theo phòng",
+  toggleCtaText = "Xem cấu hình mẫu theo diện tích phòng",
   defaultExpanded = false,
   expandSignal = 0,
   isAdmin = false,
@@ -315,7 +316,14 @@ export const RoomVisualizerSection: React.FC<RoomVisualizerProps> = ({
       .filter(k => enabledItems[k])
       .map(k => `${appliances[k].name} (${appliances[k].specs})`);
 
-    const summary = `Setup căn phòng ${area}m² (${occupants} người) - Gói ${tier === 'economy' ? 'Tiết kiệm' : tier === 'standard' ? 'Tiêu chuẩn' : 'Cao cấp'} - Ước tính ~${(singleRoomTotal / 1000000).toFixed(1)} tr/phòng (x${totalRooms} phòng = ~${(buildingTotal / 1000000).toFixed(1)} tr)`;
+    const summary = `Cấu hình mẫu ${area}m² (${occupants} người) - Gói ${tier === 'economy' ? 'Tiết kiệm' : tier === 'standard' ? 'Tiêu chuẩn' : 'Cao cấp'} - Ước tính ~${(singleRoomTotal / 1000000).toFixed(1)} tr/phòng (x${totalRooms} phòng = ~${(buildingTotal / 1000000).toFixed(1)} tr)`;
+
+    trackEvent('apply_estimator_config', {
+      source: 'room_visualizer',
+      area,
+      occupants,
+      room_count: totalRooms,
+    });
 
     onApplyToQuote({
       projectType: roomType,
@@ -408,12 +416,15 @@ export const RoomVisualizerSection: React.FC<RoomVisualizerProps> = ({
 
             <button
               type="button"
-              onClick={() => setIsExpanded(true)}
+              onClick={() => {
+                trackEvent('open_estimator', { location: 'room_visualizer_expand' });
+                setIsExpanded(true);
+              }}
               aria-expanded={false}
               className="w-full lg:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-lg shadow-orange-950/50 inline-flex items-center justify-center gap-2.5 transition-all cursor-pointer active:scale-[0.98] shrink-0"
             >
               <Images className="w-4 h-4 shrink-0" />
-              <span>{toggleCtaText || "Xem Hình Ảnh Căn Hộ & Setup Thiết Bị"}</span>
+              <span>{toggleCtaText || "Xem cấu hình mẫu theo diện tích phòng"}</span>
               <ChevronDown className="w-4 h-4 shrink-0" />
             </button>
           </div>
@@ -1029,6 +1040,9 @@ export const RoomVisualizerSection: React.FC<RoomVisualizerProps> = ({
 
               {/* Action Buttons */}
               <div className="pt-2 space-y-2">
+                <p className="text-[11px] text-neutral-400 leading-relaxed">
+                  * Ngân sách tham khảo theo cấu hình mẫu (chưa gồm VAT, phí giao nhận &amp; vật tư lắp đặt thực tế).
+                </p>
                 <button
                   type="button"
                   onClick={handleApply}
@@ -1040,9 +1054,10 @@ export const RoomVisualizerSection: React.FC<RoomVisualizerProps> = ({
                 </button>
 
                 <a
-                  href={`${siteConfig.contact.primaryZaloUrl}?text=${encodeURIComponent(`Chào Điện Máy KDT-89, tôi đang xem mô hình 3D căn phòng ${area}m2 (${occupants} người), quy mô ${totalRooms} phòng. Nhờ gửi bảng giá đại lý chi tiết!`)}`}
+                  href={`${siteConfig.contact.primaryZaloUrl}?text=${encodeURIComponent(`Chào Điện Máy KDT-89, tôi đang xem cấu hình mẫu căn phòng ${area}m2 (${occupants} người), quy mô ${totalRooms} phòng. Nhờ gửi bảng báo giá chi tiết!`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => trackEvent('click_zalo', { location: 'room_visualizer', area, occupants })}
                   className="w-full py-2.5 px-4 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
                 >
                   <MessageCircle className="w-4 h-4 text-blue-400" />

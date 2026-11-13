@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getStoredLeads, updateLeadStatus, exportLeadsToCSV, fetchLeadsFromFirebase, LeadRecord } from '../utils/leadStorage';
-import { siteConfig, FORM_ENDPOINT } from '../config/siteConfig';
-import { X, Download, Phone, MessageCircle, FileSpreadsheet, Copy, Check, Clock, ShieldCheck, HelpCircle, Cloud, RefreshCw } from 'lucide-react';
+import { FORM_ENDPOINT } from '../config/siteConfig';
+import { LANDING_PRESETS, LandingModelId } from '../utils/landingPresets';
+import { getFunnelMetrics, resetFunnelMetrics, FunnelMetrics } from '../utils/analytics';
+import { X, Download, Phone, MessageCircle, FileSpreadsheet, Copy, Check, Clock, ShieldCheck, BarChart3, Link2, RotateCcw } from 'lucide-react';
 
 interface LeadsManagerModalProps {
   isOpen: boolean;
@@ -10,12 +12,15 @@ interface LeadsManagerModalProps {
 
 export const LeadsManagerModal: React.FC<LeadsManagerModalProps> = ({ isOpen, onClose }) => {
   const [leads, setLeads] = useState<LeadRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<'leads' | 'guide'>('leads');
+  const [activeTab, setActiveTab] = useState<'leads' | 'ads' | 'guide'>('leads');
   const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<FunnelMetrics>(getFunnelMetrics);
   const [isLoadingFirebase, setIsLoadingFirebase] = useState(false);
 
   const loadAllLeads = async () => {
     setLeads(getStoredLeads());
+    setMetrics(getFunnelMetrics());
     setIsLoadingFirebase(true);
     try {
       const remote = await fetchLeadsFromFirebase();
@@ -34,6 +39,15 @@ export const LeadsManagerModal: React.FC<LeadsManagerModalProps> = ({ isOpen, on
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://dienmaykdt89.com';
+
+  const handleCopyLandingLink = (id: LandingModelId, query: string) => {
+    const fullUrl = `${baseUrl}/${query}`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopiedLinkId(id);
+    setTimeout(() => setCopiedLinkId(null), 2000);
+  };
 
   const handleStatusChange = (id: string, status: LeadRecord['status']) => {
     updateLeadStatus(id, status);
@@ -175,7 +189,7 @@ function doPost(e) {
 
         {/* Tab Controls */}
         <div className="px-6 pt-3 border-b border-neutral-200 flex items-center justify-between bg-neutral-50 flex-wrap gap-2">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setActiveTab('leads')}
               className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
@@ -185,6 +199,20 @@ function doPost(e) {
               }`}
             >
               Danh sách khách đã điền ({leads.length})
+            </button>
+            <button
+              onClick={() => {
+                setMetrics(getFunnelMetrics());
+                setActiveTab('ads');
+              }}
+              className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'ads'
+                  ? 'border-orange-600 text-orange-700 bg-white rounded-t-lg'
+                  : 'border-transparent text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-orange-600" />
+              <span>3 Link Quảng Cáo &amp; Đo Lường</span>
             </button>
             <button
               onClick={() => setActiveTab('guide')}
@@ -312,6 +340,108 @@ function doPost(e) {
                   </table>
                 </div>
               )}
+            </div>
+          ) : activeTab === 'ads' ? (
+            <div className="space-y-6 max-w-4xl">
+              {/* 3 Dedicated Landing Links */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-neutral-900">
+                  <Link2 className="w-4 h-4 text-orange-600" />
+                  <span>3 Link Landing Chạy Quảng Cáo Theo Từng Tệp Khách Hàng</span>
+                </div>
+                <p className="text-xs text-neutral-600">
+                  Mỗi link sẽ tự động đổi tiêu đề Hero, chọn sẵn mô hình công trình, số phòng gợi ý và nhóm thiết bị mặc định tương ứng trong Dự toán &amp; Form Báo Giá:
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {(['chdv', 'nha-tro', 'khach-san'] as LandingModelId[]).map((id) => {
+                    const preset = LANDING_PRESETS[id];
+                    const fullUrl = `${baseUrl}/${preset.queryString}`;
+                    return (
+                      <div key={id} className="p-4 rounded-xl border border-neutral-200 bg-neutral-50 space-y-2.5 flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <span className="inline-block text-[11px] font-extrabold text-orange-700 bg-orange-100 px-2 py-0.5 rounded">
+                            {preset.audienceLabel}
+                          </span>
+                          <h4 className="text-xs font-bold text-neutral-900 leading-snug">
+                            &ldquo;{preset.adTitle}&rdquo;
+                          </h4>
+                          <p className="text-[11px] text-neutral-600">
+                            Chọn sẵn: <strong>{preset.projectTypeTitle}</strong> ({preset.defaultRoomCount} phòng)
+                          </p>
+                          <code className="block text-[10.5px] font-mono text-neutral-700 bg-white px-2 py-1.5 rounded border border-neutral-200 break-all">
+                            {fullUrl}
+                          </code>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyLandingLink(id, preset.queryString)}
+                          className="w-full py-2 px-3 rounded-lg bg-neutral-900 hover:bg-orange-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          {copiedLinkId === id ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>Đã copy link!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Copy link quảng cáo</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Live Funnel Event Tracking Counters */}
+              <div className="space-y-3 pt-4 border-t border-neutral-200">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 text-sm font-bold text-neutral-900">
+                    <BarChart3 className="w-4 h-4 text-orange-600" />
+                    <span>Đo Lường Sự Kiện Chuyển Đổi (Funnel Tracking)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMetrics(resetFunnelMetrics())}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-semibold cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Đặt lại số đếm</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[
+                    { key: 'page_view' as const, label: '1. Xem trang (page_view)' },
+                    { key: 'click_quote_cta' as const, label: '2. Bấm Nhận báo giá' },
+                    { key: 'open_estimator' as const, label: '3. Mở / Dùng dự toán' },
+                    { key: 'apply_estimator_config' as const, label: '4. Nạp cấu hình vào form' },
+                    { key: 'click_zalo' as const, label: '5. Bấm nút Zalo' },
+                    { key: 'submit_lead_success' as const, label: '6. Gửi form thành công' },
+                  ].map((item) => (
+                    <div key={item.key} className="p-3.5 rounded-xl bg-white border border-neutral-200 shadow-2xs">
+                      <span className="text-[11px] font-semibold text-neutral-500 block">{item.label}</span>
+                      <span className="text-2xl font-black text-orange-600 tabular-nums mt-1 block">
+                        {metrics[item.key] || 0}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-950 space-y-1">
+                  <p className="font-bold">Tích hợp sẵn Google Tag Manager / GA4 / Meta Pixel:</p>
+                  <p className="text-neutral-700">
+                    Mỗi hành động đều đẩy sự kiện <code className="font-mono bg-white px-1 rounded">kdt89_*</code> vào{' '}
+                    <code className="font-mono bg-white px-1 rounded">window.dataLayer</code>, tự gửi{' '}
+                    <code className="font-mono bg-white px-1 rounded">generate_lead</code> lên GA4 và{' '}
+                    <code className="font-mono bg-white px-1 rounded">Lead</code> / <code className="font-mono bg-white px-1 rounded">Contact</code> lên Facebook Pixel khi anh gắn mã theo dõi.
+                  </p>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-6 max-w-3xl">

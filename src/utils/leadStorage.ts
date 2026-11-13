@@ -92,20 +92,27 @@ export const saveLead = async (lead: Omit<LeadRecord, 'id' | 'status'>): Promise
   // 2. Sync to Firebase Firestore
   try {
     const docRef = doc(db, 'leads', leadId);
-    await setDoc(docRef, {
+    const firestorePayload: Record<string, unknown> = {
       fullName: lead.fullName || 'Khách hàng',
       phoneNumber: lead.phoneNumber,
       projectAddress: lead.projectAddress || '',
       projectType: lead.projectType || 'Công trình',
       roomCount: parseInt(lead.roomCount, 10) || 1,
-      roomArea: lead.roomArea || null,
-      occupants: lead.occupants || null,
-      selectedCategories: lead.selectedCategories ? lead.selectedCategories.split(',').map(s => s.trim()) : [],
+      selectedCategories: lead.selectedCategories
+        ? lead.selectedCategories.split(',').map((s) => s.trim()).filter(Boolean)
+        : [],
       notes: lead.notes || '',
       status: 'new',
       createdAt: new Date().toISOString(),
       source: lead.source || 'web_form',
-    });
+    };
+    if (typeof lead.roomArea === 'number' && !Number.isNaN(lead.roomArea)) {
+      firestorePayload.roomArea = lead.roomArea;
+    }
+    if (typeof lead.occupants === 'number' && !Number.isNaN(lead.occupants)) {
+      firestorePayload.occupants = lead.occupants;
+    }
+    await setDoc(docRef, firestorePayload);
     console.log('Lead synced to Firebase Firestore successfully:', leadId);
   } catch (error) {
     console.warn('Could not sync lead to Firestore immediately:', error);

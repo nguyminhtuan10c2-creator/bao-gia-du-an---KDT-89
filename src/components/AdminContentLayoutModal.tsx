@@ -39,9 +39,9 @@ interface AdminContentLayoutModalProps {
 
 export const SECTION_NAMES: Record<string, string> = {
   hero: '1. Đầu trang & Banner chính (Hero)',
-  room_visualizer: '2. Setup căn phòng theo m² & người ở',
-  quote_form: '3. Form Đăng ký nhận báo giá',
-  project_estimator: '4. Công cụ tính dự toán nhanh theo phòng',
+  quote_form: '2. Form Đăng ký nhận báo giá',
+  project_estimator: '3. Công cụ tính dự toán nhanh theo phòng',
+  room_visualizer: '4. Chọn cấu hình mẫu theo diện tích phòng',
   categories: '5. Danh mục thiết bị điện máy chủ lực',
   project_types: '6. Giải pháp theo mô hình công trình',
   steps: '7. Quy trình 4 bước nhận báo giá',
@@ -426,9 +426,9 @@ export const AdminContentLayoutModal: React.FC<AdminContentLayoutModalProps> = (
                 >
                   <option value="global">0. Thương Hiệu, Hotline, Địa Chỉ, Nút Bấm &amp; Footer</option>
                   <option value="hero">1. Đầu Trang &amp; Banner Hero</option>
-                  <option value="room_visualizer">2. Setup Căn Phòng Trực Quan (Ẩn / Mở Trượt Xuống)</option>
-                  <option value="quote_form">3. Form Báo Giá Công Trình</option>
-                  <option value="project_estimator">4. Dự Toán Nhanh Theo Phòng</option>
+                  <option value="quote_form">2. Form Báo Giá Công Trình</option>
+                  <option value="project_estimator">3. Dự Toán Nhanh Theo Phòng</option>
+                  <option value="room_visualizer">4. Chọn Cấu Hình Mẫu Theo Diện Tích (Ẩn / Mở Trượt Xuống)</option>
                   <option value="categories">5. Danh Mục Thiết Bị (Tiêu đề &amp; 6 Thẻ sản phẩm)</option>
                   <option value="project_types">6. Giải Pháp Theo Mô Hình (Tiêu đề &amp; 4 Mô hình)</option>
                   <option value="steps">7. Quy Trình 4 Bước (Tiêu đề &amp; 4 Bước)</option>
@@ -659,7 +659,7 @@ export const AdminContentLayoutModal: React.FC<AdminContentLayoutModalProps> = (
               {selectedSectionToEdit === 'room_visualizer' && (
                 <div className="space-y-4 p-4 rounded-xl bg-neutral-950 border border-neutral-800">
                   <div className="text-sm font-bold text-orange-400 pb-2 border-b border-neutral-800">
-                    Phần: Setup Căn Phòng Theo Diện Tích &amp; Số Người
+                    Phần: Chọn Cấu Hình Mẫu Theo Diện Tích Phòng
                   </div>
 
                   <div>

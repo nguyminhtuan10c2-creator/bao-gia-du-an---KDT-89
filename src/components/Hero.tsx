@@ -3,6 +3,7 @@ import { siteConfig } from '../config/siteConfig';
 import { KdtLogo } from './KdtLogo';
 import { FileText, ArrowRight, ShieldCheck, Truck, Clock, Layers, Image as ImageIcon } from 'lucide-react';
 import { getLocalMediaAssets } from '../services/mediaSyncService';
+import { trackEvent } from '../utils/analytics';
 
 interface HeroProps {
   onOpenQuote: () => void;
@@ -101,7 +102,11 @@ export const Hero: React.FC<HeroProps> = ({
             {/* Primary Action Buttons: Nút Nhận Báo Giá NỀN CAM - CHỮ TRẮNG (tối ưu không bị tràn trên mobile) */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 pt-2">
               <button
-                onClick={onOpenQuote}
+                type="button"
+                onClick={() => {
+                  trackEvent('click_quote_cta', { location: 'hero_primary' });
+                  onOpenQuote();
+                }}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 sm:gap-2 px-4 py-3 sm:px-6 sm:py-3.5 text-xs sm:text-sm font-extrabold text-white bg-orange-600 hover:bg-orange-700 active:bg-orange-800 rounded-xl shadow-md hover:shadow-orange-600/30 transition-all cursor-pointer text-center"
               >
                 <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white shrink-0" />
@@ -110,8 +115,12 @@ export const Hero: React.FC<HeroProps> = ({
               </button>
 
               <button
-                onClick={onOpenEstimator}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-xs font-bold text-neutral-900 hover:text-black bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 rounded-xl transition-colors text-center"
+                type="button"
+                onClick={() => {
+                  trackEvent('open_estimator', { location: 'hero_secondary' });
+                  onOpenEstimator();
+                }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:px-5 sm:py-3.5 text-xs font-bold text-neutral-900 hover:text-black bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 rounded-xl transition-colors text-center cursor-pointer"
               >
                 <Layers className="w-3.5 h-3.5 text-orange-600 shrink-0" />
                 <span className="truncate">{ctaSecondary || 'Tính dự toán theo số phòng'}</span>
@@ -130,7 +139,7 @@ export const Hero: React.FC<HeroProps> = ({
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-orange-600 shrink-0" />
-                <span>Báo Giá Nhanh Trong 30 Phút</span>
+                <span>Phản Hồi Trong Giờ Làm Việc</span>
               </div>
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-orange-600 shrink-0" />

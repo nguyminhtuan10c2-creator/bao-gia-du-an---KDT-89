@@ -1,12 +1,16 @@
-import React, { useState, useId } from 'react';
+import React, { useState, useId, useEffect, useRef } from 'react';
 import { siteConfig } from '../config/siteConfig';
 import { KdtLogo } from './KdtLogo';
-import { CheckSquare, Square, ArrowRight, MessageCircle, Check } from 'lucide-react';
+import { CheckSquare, Square, ArrowRight, MessageCircle, Check, Info } from 'lucide-react';
+import { trackEvent } from '../utils/analytics';
 
 interface ProjectEstimatorProps {
   title?: string;
   subtitle?: string;
   badge?: string;
+  initialProjectTypeId?: string;
+  initialRoomCount?: number;
+  initialEquipmentIds?: string[];
   isAdmin?: boolean;
   onEditSection?: () => void;
   onApplyToQuote: (config: {
@@ -103,23 +107,42 @@ export const ProjectEstimator: React.FC<ProjectEstimatorProps> = ({
   title,
   subtitle,
   badge,
+  initialProjectTypeId,
+  initialRoomCount,
+  initialEquipmentIds,
   isAdmin = false,
   onEditSection,
   onApplyToQuote 
 }) => {
   const roomCountId = useId();
-  const [selectedProjectType, setSelectedProjectType] = useState<string>("chdv");
-  const [roomCount, setRoomCount] = useState<number>(10);
+  const [selectedProjectType, setSelectedProjectType] = useState<string>(initialProjectTypeId || "chdv");
+  const [roomCount, setRoomCount] = useState<number>(initialRoomCount || 10);
   const [qualityTier, setQualityTier] = useState<"budget" | "balanced" | "premium">("balanced");
-  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([
-    "may-lanh",
-    "may-tam-nong",
-    "tu-lanh",
-    "tivi"
-  ]);
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>(
+    initialEquipmentIds && initialEquipmentIds.length > 0
+      ? initialEquipmentIds
+      : ["may-lanh", "may-tam-nong", "tu-lanh", "tivi"]
+  );
   const [appliedNotice, setAppliedNotice] = useState<boolean>(false);
+  const hasTrackedInteractRef = useRef<boolean>(false);
+
+  const trackFirstEstimatorInteract = (action: string) => {
+    if (!hasTrackedInteractRef.current) {
+      hasTrackedInteractRef.current = true;
+      trackEvent('open_estimator', { trigger: action, project_type: selectedProjectType });
+    }
+  };
+
+  useEffect(() => {
+    if (initialProjectTypeId) setSelectedProjectType(initialProjectTypeId);
+    if (initialRoomCount) setRoomCount(initialRoomCount);
+    if (initialEquipmentIds && initialEquipmentIds.length > 0) {
+      setSelectedEquipmentIds(initialEquipmentIds);
+    }
+  }, [initialProjectTypeId, initialRoomCount, initialEquipmentIds]);
 
   const toggleEquipment = (id: string) => {
+    trackFirstEstimatorInteract('toggle_equipment');
     if (selectedEquipmentIds.includes(id)) {
       if (selectedEquipmentIds.length > 1) {
         setSelectedEquipmentIds(selectedEquipmentIds.filter(item => item !== id));
@@ -149,6 +172,12 @@ export const ProjectEstimator: React.FC<ProjectEstimatorProps> = ({
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
 
+  const todayFormatted = new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date());
+
   const currentProjectName = siteConfig.projectTypes.find(p => p.id === selectedProjectType)?.title || "Công trình";
 
   const getTierName = () => {
@@ -159,6 +188,13 @@ export const ProjectEstimator: React.FC<ProjectEstimatorProps> = ({
 
   const handleApplyConfig = () => {
     const summaryText = `${currentProjectName} (${roomCount} phòng) - Gói ${getTierName()} - ${activeItems.map(i => i.name.split('(')[0].trim()).join(', ')}`;
+    trackEvent('apply_estimator_config', {
+      source: 'project_estimator',
+      project_type: currentProjectName,
+      room_count: roomCount,
+      tier: qualityTier,
+      items_count: activeItems.length,
+    });
     onApplyToQuote({
       projectType: currentProjectName,
       roomCount,
@@ -229,7 +265,10 @@ Nhờ KDT-89 gửi bảng báo giá chi tiết và phương án chiết khấu q
                   <button
                     key={project.id}
                     type="button"
-                    onClick={() => setSelectedProjectType(project.id)}
+                    onClick={() => {
+                      trackFirstEstimatorInteract('select_project_type');
+                      setSelectedProjectType(project.id);
+                    }}
                     className={`px-3 py-2.5 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer ${
                       selectedProjectType === project.id
                         ? 'border-orange-600 bg-orange-50 text-orange-900 shadow-xs'
@@ -392,15 +431,27 @@ Nhờ KDT-89 gửi bảng báo giá chi tiết và phương án chiết khấu q
                 </span>
               </div>
 
-              <div className="pt-3 border-t border-neutral-200 flex items-baseline justify-between gap-2">
-                <div>
-                  <span className="text-xs font-bold text-neutral-900 block">Tổng mức đầu tư sơ bộ:</span>
-                  <span className="text-[11px] text-neutral-600 font-normal">*Đơn giá tham khảo, KDT-89 chiết khấu thêm theo lô thực tế</span>
+              <div className="pt-3 border-t border-neutral-200 space-y-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-bold text-neutral-900 block">Tổng mức đầu tư sơ bộ:</span>
+                    <span className="text-[11px] text-neutral-600 font-medium block mt-0.5">
+                      Đã gồm máy mới chính hãng · Chưa gồm VAT, giao hàng ngoại thành &amp; vật tư lắp đặt · Cập nhật {todayFormatted}
+                    </span>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {/* CHỮ SIZE LỚN MÀU CAM */}
+                    <span className="text-2xl sm:text-3xl font-black text-orange-600 tabular-nums block">
+                      {formatVND(totalEstimatedCost)}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
-                  {/* CHỮ SIZE LỚN MÀU CAM */}
-                  <span className="text-2xl sm:text-3xl font-black text-orange-600 tabular-nums block">
-                    {formatVND(totalEstimatedCost)}
+
+                {/* Disclaimer box immediately under total estimated investment */}
+                <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200 text-[11.5px] leading-relaxed text-neutral-800 flex items-start gap-2">
+                  <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    Đây là mức ngân sách tham khảo theo cấu hình mẫu. <strong>KDT-89</strong> sẽ chốt model, chiết khấu, VAT, giao nhận và vật tư lắp đặt theo công trình thực tế.
                   </span>
                 </div>
               </div>
@@ -429,7 +480,7 @@ Nhờ KDT-89 gửi bảng báo giá chi tiết và phương án chiết khấu q
                 {appliedNotice ? (
                   <>
                     <Check className="w-4 h-4 text-white" />
-                    <span>Đã chuyển vào Form báo giá phía dưới!</span>
+                    <span>Đã chuyển vào Form báo giá!</span>
                   </>
                 ) : (
                   <>
@@ -443,6 +494,7 @@ Nhờ KDT-89 gửi bảng báo giá chi tiết và phương án chiết khấu q
                 href={`${siteConfig.contact.primaryZaloUrl}?text=${generateZaloMessage()}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackEvent('click_zalo', { location: 'estimator', project_type: currentProjectName })}
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors"
               >
                 <MessageCircle className="w-4 h-4 text-blue-600" />

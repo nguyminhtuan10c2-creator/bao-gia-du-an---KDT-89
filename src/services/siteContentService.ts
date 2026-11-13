@@ -164,21 +164,21 @@ export const DEFAULT_SITE_SETTINGS: SiteSettingsData = {
   hotline2Display: siteConfig.contact.hotlines[1]?.display || "0903 667 355",
   hotline2Raw: siteConfig.contact.hotlines[1]?.raw || "0903667355",
 
-  heroBadge: "Kênh Phân Phối Trực Tiếp Từ Đại Lý Cấp 1",
+  heroBadge: "Đại lý phân phối thiết bị điện máy công trình",
   heroTitle: "Báo Giá Thiết Bị Điện Máy Trọn Gói Dự Án & Công Trình",
-  heroSubtitle: "Cung cấp máy lạnh, máy tắm nước nóng, tủ lạnh, tivi, máy giặt giá sỉ tốt nhất TP.HCM. Hỗ trợ dự toán kỹ thuật, giao hàng tận chân công trình, đầy đủ VAT và bảo hành hãng.",
+  heroSubtitle: "Cung cấp máy lạnh, máy tắm nước nóng, tủ lạnh, tivi, máy giặt giá theo số lượng tại TP.HCM và tỉnh lân cận. Hỗ trợ dự toán kỹ thuật, giao hàng theo tiến độ, đầy đủ VAT và bảo hành hãng.",
   heroCtaPrimary: "Đăng ký nhận báo giá dự án",
   heroCtaSecondary: "Tính dự toán theo số phòng",
-
-  roomSetupBadge: "Mô Phỏng Căn Phòng Trực Quan",
-  roomSetupTitle: "Setup Thiết Bị Nội Thất Chuẩn Theo Diện Tích & Số Người",
-  roomSetupSubtitle: "Xem ảnh thực tế căn hộ theo số m² và số người ở. KDT-89 tự động tính toán đúng công suất máy lạnh, dung tích tủ lạnh và thiết bị tối ưu chi phí.",
-  roomToggleCtaText: "Xem Hình Ảnh Căn Hộ & Setup Thiết Bị",
+  
+  roomSetupBadge: "Cấu hình mẫu theo phòng",
+  roomSetupTitle: "Chọn cấu hình mẫu theo diện tích phòng",
+  roomSetupSubtitle: "Tham khảo bố trí và công suất thiết bị gợi ý theo diện tích (15m² - 40m²) và số người ở.",
+  roomToggleCtaText: "Xem cấu hình mẫu theo diện tích phòng",
   roomDefaultExpanded: false,
 
-  quoteBadge: "Phản hồi báo giá trong 30 phút",
+  quoteBadge: "Tiếp nhận 24/7 · Phản hồi trong giờ làm việc",
   quoteTitle: "Đăng ký nhận báo giá thiết bị công trình",
-  quoteSubtitle: "Điền nhanh số phòng hoặc danh sách thiết bị. KDT-89 sẽ gửi bảng chiết khấu đại lý tốt nhất trực tiếp qua điện thoại hoặc Zalo.",
+  quoteSubtitle: "Điền nhanh số phòng hoặc danh sách thiết bị. KDT-89 sẽ gửi bảng giá theo số lượng và phương án giao nhận qua điện thoại hoặc Zalo.",
 
   estimatorBadge: "Dự Toán Dự Án",
   estimatorTitle: "Công Cụ Tính Dự Toán Nhanh Theo Số Phòng",
@@ -215,9 +215,9 @@ export const DEFAULT_SITE_SETTINGS: SiteSettingsData = {
 
   sectionsOrder: [
     'hero',
-    'room_visualizer',
     'quote_form',
     'project_estimator',
+    'room_visualizer',
     'categories',
     'project_types',
     'steps',
@@ -253,6 +253,63 @@ function stripUndefined<T>(input: T): T {
   return input;
 }
 
+function normalizeLegacySettings(data: Partial<SiteSettingsData>): SiteSettingsData {
+  const legacyOrder = JSON.stringify([
+    'hero',
+    'room_visualizer',
+    'quote_form',
+    'project_estimator',
+    'categories',
+    'project_types',
+    'steps',
+    'real_evidence',
+  ]);
+  const incomingOrder = data.sectionsOrder ? JSON.stringify(data.sectionsOrder) : '';
+
+  const merged: SiteSettingsData = {
+    ...DEFAULT_SITE_SETTINGS,
+    ...data,
+    sectionsVisibility: {
+      ...DEFAULT_SITE_SETTINGS.sectionsVisibility,
+      ...(data.sectionsVisibility || {}),
+    },
+    sectionsOrder:
+      !data.sectionsOrder || incomingOrder === legacyOrder
+        ? DEFAULT_SITE_SETTINGS.sectionsOrder
+        : data.sectionsOrder,
+    customSections: data.customSections || [],
+    roomModels:
+      data.roomModels && data.roomModels.length > 0 ? data.roomModels : DEFAULT_ROOM_MODELS,
+  };
+
+  if (merged.heroBadge === 'Kênh Phân Phối Trực Tiếp Từ Đại Lý Cấp 1') {
+    merged.heroBadge = DEFAULT_SITE_SETTINGS.heroBadge;
+  }
+  if (
+    merged.heroSubtitle ===
+    'Cung cấp máy lạnh, máy tắm nước nóng, tủ lạnh, tivi, máy giặt giá sỉ tốt nhất TP.HCM. Hỗ trợ dự toán kỹ thuật, giao hàng tận chân công trình, đầy đủ VAT và bảo hành hãng.'
+  ) {
+    merged.heroSubtitle = DEFAULT_SITE_SETTINGS.heroSubtitle;
+  }
+  if (merged.quoteBadge === 'Phản hồi báo giá trong 30 phút') {
+    merged.quoteBadge = DEFAULT_SITE_SETTINGS.quoteBadge;
+  }
+  if (
+    merged.quoteSubtitle ===
+    'Điền nhanh số phòng hoặc danh sách thiết bị. KDT-89 sẽ gửi bảng chiết khấu đại lý tốt nhất trực tiếp qua điện thoại hoặc Zalo.'
+  ) {
+    merged.quoteSubtitle = DEFAULT_SITE_SETTINGS.quoteSubtitle;
+  }
+  if (merged.roomSetupTitle === 'Setup Thiết Bị Nội Thất Chuẩn Theo Diện Tích & Số Người') {
+    merged.roomSetupTitle = DEFAULT_SITE_SETTINGS.roomSetupTitle;
+  }
+  if (merged.roomToggleCtaText === 'Xem Hình Ảnh Căn Hộ & Setup Thiết Bị') {
+    merged.roomToggleCtaText = DEFAULT_SITE_SETTINGS.roomToggleCtaText;
+  }
+
+  return merged;
+}
+
 // Load initial from localStorage fallback
 export function getLocalSiteSettings(): SiteSettingsData {
   if (typeof window === 'undefined') return DEFAULT_SITE_SETTINGS;
@@ -260,17 +317,7 @@ export function getLocalSiteSettings(): SiteSettingsData {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return {
-        ...DEFAULT_SITE_SETTINGS,
-        ...parsed,
-        sectionsVisibility: {
-          ...DEFAULT_SITE_SETTINGS.sectionsVisibility,
-          ...(parsed.sectionsVisibility || {})
-        },
-        sectionsOrder: parsed.sectionsOrder || DEFAULT_SITE_SETTINGS.sectionsOrder,
-        customSections: parsed.customSections || [],
-        roomModels: (parsed.roomModels && parsed.roomModels.length > 0) ? parsed.roomModels : DEFAULT_ROOM_MODELS,
-      };
+      return normalizeLegacySettings(parsed);
     }
   } catch (err) {
     console.error('Error reading local site settings:', err);
@@ -326,17 +373,13 @@ export function subscribeToSiteSettings(callback: (settings: SiteSettingsData) =
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as Partial<SiteSettingsData>;
-        const merged: SiteSettingsData = {
-          ...DEFAULT_SITE_SETTINGS,
+        const merged = normalizeLegacySettings({
           ...data,
-          sectionsVisibility: {
-            ...DEFAULT_SITE_SETTINGS.sectionsVisibility,
-            ...(data.sectionsVisibility || {})
-          },
-          sectionsOrder: data.sectionsOrder || DEFAULT_SITE_SETTINGS.sectionsOrder,
-          customSections: data.customSections || [],
-          roomModels: (data.roomModels && data.roomModels.length > 0) ? data.roomModels : (getLocalSiteSettings().roomModels || DEFAULT_ROOM_MODELS),
-        };
+          roomModels:
+            data.roomModels && data.roomModels.length > 0
+              ? data.roomModels
+              : getLocalSiteSettings().roomModels || DEFAULT_ROOM_MODELS,
+        });
         try {
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
         } catch {

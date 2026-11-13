@@ -1,13 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { siteConfig, FORM_ENDPOINT } from '../config/siteConfig';
 import { saveLead } from '../utils/leadStorage';
-import { Send, CheckCircle2, AlertCircle, MessageCircle, Phone, ArrowRight, Loader2, Sparkles, Database } from 'lucide-react';
+import { EditableCategoryItem } from '../services/siteContentService';
+import { mapItemsToFormCategories } from '../utils/landingPresets';
+import { trackEvent } from '../utils/analytics';
+import { Send, CheckCircle2, AlertCircle, MessageCircle, Loader2, Database } from 'lucide-react';
 
 interface QuoteFormProps {
   isAdmin?: boolean;
   badge?: string;
   title?: string;
   subtitle?: string;
+  customCategories?: EditableCategoryItem[];
+  landingModelId?: string;
   onEditSection?: () => void;
   initialConfig?: {
     projectType?: string;
@@ -26,10 +31,17 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({
   badge,
   title,
   subtitle,
+  customCategories,
+  landingModelId,
   onEditSection,
   initialConfig, 
   onOpenLeadsManager 
 }) => {
+  const categoryOptions = useMemo(() => {
+    const source = customCategories && customCategories.length > 0 ? customCategories : siteConfig.categories;
+    return source.map((c) => c.name);
+  }, [customCategories]);
+
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [projectAddress, setProjectAddress] = useState('');
@@ -47,21 +59,32 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'fallback_success' | 'error'>('idle');
   const [phoneError, setPhoneError] = useState('');
 
-  // Update when parent passes configuration
+  // Synchronize when parent passes configuration (Landing Preset, Estimator, or Room Visualizer)
   useEffect(() => {
     if (initialConfig) {
       if (initialConfig.projectType) setProjectType(initialConfig.projectType);
       if (initialConfig.roomCount) setRoomCount(initialConfig.roomCount.toString());
-      if (initialConfig.roomArea) setRoomArea(initialConfig.roomArea);
-      if (initialConfig.occupants) setOccupants(initialConfig.occupants);
+      if (initialConfig.roomArea !== undefined) setRoomArea(initialConfig.roomArea);
+      if (initialConfig.occupants !== undefined) setOccupants(initialConfig.occupants);
       if (initialConfig.selectedItems && initialConfig.selectedItems.length > 0) {
-        setSelectedCategories(initialConfig.selectedItems.map(item => item.split('(')[0].trim()));
+        const mapped = mapItemsToFormCategories(initialConfig.selectedItems, categoryOptions);
+        if (mapped.length > 0) {
+          setSelectedCategories(mapped);
+        }
       }
       if (initialConfig.estimatedSummary) {
-        setNotes((prev) => prev ? `${prev}\n[Dự toán: ${initialConfig.estimatedSummary}]` : `[Dự toán: ${initialConfig.estimatedSummary}]`);
+        const line = `[Dự toán: ${initialConfig.estimatedSummary}]`;
+        setNotes((prev) => {
+          const cleaned = prev
+            .split('\n')
+            .filter((l) => !l.trim().startsWith('[Dự toán:'))
+            .join('\n')
+            .trim();
+          return cleaned ? `${cleaned}\n${line}` : line;
+        });
       }
     }
-  }, [initialConfig]);
+  }, [initialConfig, categoryOptions]);
 
   const toggleCategory = (catName: string) => {
     if (selectedCategories.includes(catName)) {
@@ -110,6 +133,10 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
 
     setIsSubmitting(true);
 
+    const sourceLabel = landingModelId
+      ? `Website dienmaykdt89.com (${landingModelId})`
+      : 'Website dienmaykdt89.com';
+
     const leadPayload = {
       timestamp: new Date().toISOString(),
       fullName: fullName.trim() || 'Khách hàng liên hệ',
@@ -121,13 +148,21 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
       occupants,
       selectedCategories: selectedCategories.join(', '),
       notes: notes.trim(),
-      source: 'Website dienmaykdt89.com',
+      source: sourceLabel,
     };
 
-    // 1. Luôn lưu vào danh sách quản lý Leads trên máy (đảm bảo 100% không mất thông tin khách)
+    // 1. Luôn lưu vào danh sách quản lý Leads trên máy + Firebase
     saveLead(leadPayload);
 
-    // 2. Gửi đồng thời tới Webhook / Google Apps Script
+    // 2. Track conversion event
+    trackEvent('submit_lead_success', {
+      project_type: projectType,
+      room_count: roomCount,
+      landing_model: landingModelId || 'default',
+      categories_count: selectedCategories.length,
+    });
+
+    // 3. Gửi đồng thời tới Webhook / Google Apps Script
     try {
       await fetch(FORM_ENDPOINT, {
         method: 'POST',
@@ -135,10 +170,7 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
           'Content-Type': 'text/plain;charset=utf-8',
         },
         mode: 'no-cors',
-        body: JSON.stringify({
-          ...leadPayload,
-          source: 'Website dienmaykdt89.com',
-        }),
+        body: JSON.stringify(leadPayload),
       });
 
       setSubmitStatus('success');
@@ -167,13 +199,13 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-700">
               <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse" />
-              <span>{badge || "Tiếp Nhận Nhu Cầu 24/7 · Phản hồi báo giá trong 30 phút"}</span>
+              <span>{badge || "Tiếp nhận 24/7 · Phản hồi trong giờ làm việc"}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900 mt-1.5">
               {title || "Đăng ký nhận báo giá thiết bị công trình"}
             </h2>
             <p className="text-xs sm:text-sm text-neutral-600 mt-1">
-              {subtitle || "Điền nhanh số phòng hoặc danh sách thiết bị. KDT-89 sẽ gửi bảng chiết khấu đại lý tốt nhất trực tiếp qua điện thoại hoặc Zalo."}
+              {subtitle || "Điền nhanh số phòng hoặc danh sách thiết bị. KDT-89 sẽ gửi bảng giá theo số lượng và phương án giao nhận qua điện thoại hoặc Zalo."}
             </p>
           </div>
 
@@ -225,6 +257,7 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
                   href={`${siteConfig.contact.hotlines[0].zalo}?text=${buildZaloMessage()}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => trackEvent('click_zalo', { location: 'quote_success_primary' })}
                   className="w-full flex items-center justify-center gap-2 py-3 px-5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
                 >
                   <MessageCircle className="w-4 h-4" />
@@ -235,6 +268,7 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
                   href={`${siteConfig.contact.hotlines[1].zalo}?text=${buildZaloMessage()}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => trackEvent('click_zalo', { location: 'quote_success_secondary' })}
                   className="w-full flex items-center justify-center gap-2 py-2.5 px-5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
                 >
                   <MessageCircle className="w-4 h-4" />
@@ -350,20 +384,20 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
                   Nhóm thiết bị cần trang bị (chọn các mục áp dụng)
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {siteConfig.categories.map((cat) => {
-                    const isChecked = selectedCategories.includes(cat.name);
+                  {categoryOptions.map((catName) => {
+                    const isChecked = selectedCategories.includes(catName);
                     return (
                       <button
-                        key={cat.id}
+                        key={catName}
                         type="button"
-                        onClick={() => toggleCategory(cat.name)}
+                        onClick={() => toggleCategory(catName)}
                         className={`p-2.5 rounded-lg text-xs font-medium text-left border transition-all cursor-pointer flex items-center justify-between ${
                           isChecked
                             ? 'bg-amber-100/70 border-amber-500 text-amber-950 font-semibold'
                             : 'bg-neutral-50 border-neutral-200 text-neutral-700 hover:border-neutral-300'
                         }`}
                       >
-                        <span className="truncate">{cat.name}</span>
+                        <span className="truncate">{catName}</span>
                         {isChecked && <span className="text-amber-700 font-bold ml-1">✓</span>}
                       </button>
                     );
@@ -410,6 +444,7 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
                     href={`${siteConfig.contact.hotlines[0].zalo}?text=${buildZaloMessage()}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => trackEvent('click_zalo', { location: 'quote_form_primary' })}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 sm:py-3 px-3 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors whitespace-nowrap"
                     title={`Zalo Ms. Ngọc (${siteConfig.contact.hotlines[0].display})`}
                   >
@@ -421,6 +456,7 @@ Nhờ KDT-89 gửi báo giá chi tiết và phương án chiết khấu.`;
                     href={`${siteConfig.contact.hotlines[1].zalo}?text=${buildZaloMessage()}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => trackEvent('click_zalo', { location: 'quote_form_secondary' })}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 sm:py-3 px-3 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors whitespace-nowrap"
                     title={`Zalo Mr. Dũng (${siteConfig.contact.hotlines[1].display})`}
                   >
