@@ -343,21 +343,20 @@ export async function saveSiteSettingsToFirebase(settings: Partial<SiteSettingsD
     );
   }
 
-  // Save locally first for instant snappy response
-  try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new Event('kdt_site_settings_updated'));
-  } catch (err) {
-    console.warn('LocalStorage quota warning (saving to Firebase):', err);
-  }
-
-  // Sync to Firebase Firestore
+  // Sync to Firebase Firestore first so we never falsely cache unsynced oversized data
   try {
     const docRef = doc(db, 'site_settings', 'main');
     await setDoc(docRef, updated, { merge: true });
     console.log('Firebase site_settings updated successfully');
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, 'site_settings/main');
+  }
+
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new Event('kdt_site_settings_updated'));
+  } catch (err) {
+    console.warn('LocalStorage quota warning (saved to Firebase):', err);
   }
 
   return updated;

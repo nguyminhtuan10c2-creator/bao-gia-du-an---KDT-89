@@ -323,6 +323,7 @@ export const RoomSlideshowViewer: React.FC<RoomSlideshowViewerProps> = ({
               key={slide.id}
               src={slide.src}
               alt={slide.label}
+              referrerPolicy="no-referrer"
               loading={idx === 0 ? 'eager' : 'lazy'}
               className={`absolute inset-0 w-full h-full object-cover object-center transition-all duration-700 ease-out ${
                 isActive
@@ -485,6 +486,7 @@ export const RoomSlideshowViewer: React.FC<RoomSlideshowViewerProps> = ({
                 <img
                   src={slide.src}
                   alt={slide.label}
+                  referrerPolicy="no-referrer"
                   loading="lazy"
                   className="w-full h-full object-cover"
                 />

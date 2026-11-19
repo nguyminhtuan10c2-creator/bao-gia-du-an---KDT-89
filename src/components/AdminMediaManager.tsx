@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { siteConfig } from '../config/siteConfig';
 import { KdtLogo } from './KdtLogo';
-import { compressImageFile } from '../utils/imageCompressor';
+import { compressImageFile, extractReadableFirebaseError } from '../utils/imageCompressor';
 import {
   getLocalMediaAssets,
   saveLogoToFirebase,
@@ -9,6 +9,7 @@ import {
   saveEvidenceImageToFirebase,
   resetAllEvidenceImagesInFirebase,
   subscribeToMediaAssets,
+  verifyFirebaseConnection,
 } from '../services/mediaSyncService';
 import {
   X,
@@ -24,6 +25,7 @@ import {
   Link as LinkIcon,
   KeyRound,
   Loader2,
+  WifiOff,
 } from 'lucide-react';
 
 interface AdminMediaManagerProps {
@@ -43,9 +45,11 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
   const [evidenceMap, setEvidenceMap] = useState<Record<number, string>>({});
   const [logoUrlInput, setLogoUrlInput] = useState('');
   const [heroUrlInput, setHeroUrlInput] = useState('');
+  const [evidenceUrlInputs, setEvidenceUrlInputs] = useState<Record<number, string>>({});
   const [isBusy, setIsBusy] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [firebaseStatus, setFirebaseStatus] = useState<'checking' | 'connected' | 'offline'>('checking');
 
   // Inline password change state (avoid blocked window.prompt in iframe)
   const [isEditingPass, setIsEditingPass] = useState(false);
@@ -55,10 +59,16 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
     if (!isOpen) return;
     setActiveTab(initialTab);
     setErrorMessage(null);
+    setFirebaseStatus('checking');
+
     const local = getLocalMediaAssets();
     setCurrentLogo(local.logoUrl);
     setCurrentHero(local.heroImageUrl);
     setEvidenceMap(local.evidenceImages);
+
+    verifyFirebaseConnection().then((res) => {
+      setFirebaseStatus(res.connected ? 'connected' : 'offline');
+    });
 
     const unsub = subscribeToMediaAssets((media) => {
       setCurrentLogo(media.logoUrl);
@@ -71,16 +81,12 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
   const showSuccess = (msg: string) => {
     setErrorMessage(null);
     setSuccessMessage(msg);
-    setTimeout(() => setSuccessMessage(null), 3500);
+    setTimeout(() => setSuccessMessage(null), 4000);
   };
 
   const showError = (err: unknown) => {
     setSuccessMessage(null);
-    const msg =
-      err instanceof Error
-        ? err.message
-        : 'Không thể lưu hình ảnh lên Firebase, anh vui lòng thử ảnh nhẹ hơn hoặc kiểm tra kết nối!';
-    setErrorMessage(msg);
+    setErrorMessage(extractReadableFirebaseError(err));
   };
 
   // 1. Logo Upload / URL / Reset
@@ -91,14 +97,16 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
     setIsBusy(true);
     try {
       const compressed = await compressImageFile(file, {
-        maxWidth: 480,
-        maxHeight: 480,
-        quality: 0.85,
+        maxWidth: 460,
+        maxHeight: 460,
+        quality: 0.84,
         preserveTransparency: true,
+        maxBase64Length: 115_000,
       });
       await saveLogoToFirebase(compressed);
       setCurrentLogo(compressed);
-      showSuccess('Đã cập nhật Logo mới và đồng bộ lên Firebase!');
+      setFirebaseStatus('connected');
+      showSuccess('Đã cập nhật Logo mới và lưu vĩnh viễn lên Firebase!');
     } catch (err) {
       showError(err);
     } finally {
@@ -113,7 +121,8 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
       await saveLogoToFirebase(logoUrlInput.trim());
       setCurrentLogo(logoUrlInput.trim());
       setLogoUrlInput('');
-      showSuccess('Đã cập nhật đường link Logo và đồng bộ Firebase!');
+      setFirebaseStatus('connected');
+      showSuccess('Đã cập nhật đường link Logo và lưu lên Firebase!');
     } catch (err) {
       showError(err);
     } finally {
@@ -126,7 +135,8 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
     try {
       await saveLogoToFirebase(null);
       setCurrentLogo(null);
-      showSuccess('Đã khôi phục Logo về mặc định!');
+      setFirebaseStatus('connected');
+      showSuccess('Đã khôi phục Logo về mặc định trên Firebase!');
     } catch (err) {
       showError(err);
     } finally {
@@ -142,13 +152,15 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
     setIsBusy(true);
     try {
       const compressed = await compressImageFile(file, {
-        maxWidth: 1280,
+        maxWidth: 1200,
         maxHeight: 900,
-        quality: 0.78,
+        quality: 0.76,
+        maxBase64Length: 135_000,
       });
       await saveHeroImageToFirebase(compressed);
       setCurrentHero(compressed);
-      showSuccess('Đã thay đổi ảnh Banner đầu trang và đồng bộ Firebase!');
+      setFirebaseStatus('connected');
+      showSuccess('Đã thay đổi ảnh Banner đầu trang và lưu lên Firebase!');
     } catch (err) {
       showError(err);
     } finally {
@@ -163,7 +175,8 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
       await saveHeroImageToFirebase(heroUrlInput.trim());
       setCurrentHero(heroUrlInput.trim());
       setHeroUrlInput('');
-      showSuccess('Đã lưu đường link ảnh Banner và đồng bộ Firebase!');
+      setFirebaseStatus('connected');
+      showSuccess('Đã lưu đường link ảnh Banner lên Firebase!');
     } catch (err) {
       showError(err);
     } finally {
@@ -176,6 +189,7 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
     try {
       await saveHeroImageToFirebase(null);
       setCurrentHero(null);
+      setFirebaseStatus('connected');
       showSuccess('Đã khôi phục ảnh Hero về mặc định!');
     } catch (err) {
       showError(err);
@@ -184,7 +198,7 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
     }
   };
 
-  // 3. Warehouse / Evidence 6 photos
+  // 3. Warehouse / Evidence 6 photos (saved individually per slot doc in Firebase)
   const handleEvidenceUpload = async (itemId: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -195,10 +209,29 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
         maxWidth: 960,
         maxHeight: 720,
         quality: 0.74,
+        maxBase64Length: 115_000,
       });
       const updatedMap = await saveEvidenceImageToFirebase(itemId, compressed);
       setEvidenceMap(updatedMap);
-      showSuccess(`Đã cập nhật ảnh kho #${itemId} và đồng bộ Firebase!`);
+      setFirebaseStatus('connected');
+      showSuccess(`Đã cập nhật ảnh kho #${itemId} và đồng bộ lên Firebase!`);
+    } catch (err) {
+      showError(err);
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleSaveEvidenceUrl = async (itemId: number) => {
+    const url = (evidenceUrlInputs[itemId] || '').trim();
+    if (!url) return;
+    setIsBusy(true);
+    try {
+      const updatedMap = await saveEvidenceImageToFirebase(itemId, url);
+      setEvidenceMap(updatedMap);
+      setEvidenceUrlInputs((prev) => ({ ...prev, [itemId]: '' }));
+      setFirebaseStatus('connected');
+      showSuccess(`Đã lưu link ảnh kho #${itemId} lên Firebase!`);
     } catch (err) {
       showError(err);
     } finally {
@@ -211,6 +244,7 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
     try {
       const updatedMap = await saveEvidenceImageToFirebase(itemId, null);
       setEvidenceMap(updatedMap);
+      setFirebaseStatus('connected');
       showSuccess(`Đã đặt lại ảnh #${itemId} về ảnh mẫu!`);
     } catch (err) {
       showError(err);
@@ -224,7 +258,8 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
     try {
       await resetAllEvidenceImagesInFirebase();
       setEvidenceMap({});
-      showSuccess('Đã khôi phục tất cả ảnh kho bãi về mặc định!');
+      setFirebaseStatus('connected');
+      showSuccess('Đã khôi phục tất cả ảnh kho bãi về mặc định trên Firebase!');
     } catch (err) {
       showError(err);
     } finally {
@@ -270,12 +305,24 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
             <div>
               <h3 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2 flex-wrap">
                 <span>Quản Trị Logo &amp; Hình Ảnh KDT-89</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 inline-flex items-center gap-1">
-                  <Cloud className="w-3 h-3" /> Tự động nén &amp; lưu Firebase
-                </span>
+                {firebaseStatus === 'connected' && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 inline-flex items-center gap-1">
+                    <Cloud className="w-3 h-3" /> Đã kết nối Firebase Cloud
+                  </span>
+                )}
+                {firebaseStatus === 'checking' && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 inline-flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Đang kiểm tra Firebase...
+                  </span>
+                )}
+                {firebaseStatus === 'offline' && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 inline-flex items-center gap-1">
+                    <WifiOff className="w-3 h-3" /> Chưa kết nối được Firebase
+                  </span>
+                )}
               </h3>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Tải ảnh trực tiếp từ máy/điện thoại hoặc dán URL. Ảnh tự động tối ưu dung lượng và hiển thị cho mọi khách hàng.
+                Tải ảnh trực tiếp từ máy/điện thoại hoặc dán URL. Mỗi khung ảnh đều lưu trực tiếp vào cơ sở dữ liệu Firebase Firestore.
               </p>
             </div>
           </div>
@@ -343,7 +390,7 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
         {isBusy && (
           <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center gap-2 text-xs font-bold text-amber-800">
             <Loader2 className="w-4 h-4 animate-spin text-amber-600 shrink-0" />
-            <span>Đang nén ảnh và đồng bộ lên Firebase Cloud...</span>
+            <span>Đang nén ảnh và ghi vào Firebase Firestore...</span>
           </div>
         )}
         {successMessage && (
@@ -510,6 +557,7 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
                     <img
                       src={currentHero || siteConfig.galleryAssets.hero}
                       alt="Hero Preview"
+                      referrerPolicy="no-referrer"
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -578,7 +626,7 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
                     6 Khung ảnh thực tế kho vận KDT-89
                   </h4>
                   <p className="text-xs text-neutral-500 mt-0.5">
-                    Bấm "Đổi ảnh" trên từng mục để chọn ảnh mới từ máy (tự nén &amp; đồng bộ ngay lên Firebase).
+                    Mỗi khung ảnh được lưu vào một document riêng trên Firebase nên tải đủ 6 ảnh vẫn mượt mà, không bị mất khi tải lại trang.
                   </p>
                 </div>
                 <button
@@ -594,52 +642,81 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
                 {siteConfig.realEvidence.items.map((item) => {
                   const activeSrc = evidenceMap[item.id] || item.imageSrc;
                   const isCustom = Boolean(evidenceMap[item.id]);
+                  const urlVal = evidenceUrlInputs[item.id] || '';
                   return (
                     <div
                       key={item.id}
-                      className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                      className={`p-3 rounded-xl border flex flex-col justify-between gap-2.5 ${
                         isCustom ? 'border-emerald-300 bg-emerald-50/40' : 'border-neutral-200 bg-neutral-50'
                       }`}
                     >
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-14 h-14 rounded-lg bg-neutral-200 overflow-hidden shrink-0 border border-neutral-300">
-                          <img src={activeSrc} alt={item.caption} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold text-neutral-900 truncate flex items-center gap-1.5">
-                            <span>#{item.id}. {item.tag}</span>
-                            {isCustom && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold shrink-0">
-                                Đã đổi
-                              </span>
-                            )}
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="w-14 h-14 rounded-lg bg-neutral-200 overflow-hidden shrink-0 border border-neutral-300">
+                            <img
+                              src={activeSrc}
+                              alt={item.caption}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover"
+                            />
                           </div>
-                          <div className="text-[11px] text-neutral-500 truncate">{item.caption}</div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-neutral-900 truncate flex items-center gap-1.5">
+                              <span>#{item.id}. {item.tag}</span>
+                              {isCustom && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold shrink-0">
+                                  Đã lưu Cloud
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-neutral-500 truncate">{item.caption}</div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <label className="px-2.5 py-1.5 rounded-lg bg-white border border-neutral-300 hover:border-orange-500 hover:text-orange-600 text-neutral-700 text-[11px] font-bold shadow-2xs transition-colors cursor-pointer flex items-center gap-1">
+                            <Upload className="w-3 h-3" />
+                            <span>Đổi ảnh</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleEvidenceUpload(item.id, e)}
+                              className="hidden"
+                            />
+                          </label>
+
+                          {isCustom && (
+                            <button
+                              type="button"
+                              onClick={() => handleResetSingleEvidence(item.id)}
+                              className="p-1.5 rounded-lg bg-neutral-200 hover:bg-neutral-300 text-neutral-700 cursor-pointer"
+                              title="Khôi phục ảnh mẫu mục này"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <label className="px-2.5 py-1.5 rounded-lg bg-white border border-neutral-300 hover:border-orange-500 hover:text-orange-600 text-neutral-700 text-[11px] font-bold shadow-2xs transition-colors cursor-pointer flex items-center gap-1">
-                          <Upload className="w-3 h-3" />
-                          <span>Đổi ảnh</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleEvidenceUpload(item.id, e)}
-                            className="hidden"
-                          />
-                        </label>
-
-                        {isCustom && (
-                          <button
-                            type="button"
-                            onClick={() => handleResetSingleEvidence(item.id)}
-                            className="p-1.5 rounded-lg bg-neutral-200 hover:bg-neutral-300 text-neutral-700 cursor-pointer"
-                            title="Khôi phục ảnh mẫu mục này"
-                          >
-                            <RotateCcw className="w-3 h-3" />
-                          </button>
-                        )}
+                      {/* Optional paste URL per warehouse slot */}
+                      <div className="flex items-center gap-1.5 pt-2 border-t border-neutral-200/70">
+                        <input
+                          type="url"
+                          placeholder="Hoặc dán link ảnh (https://...)"
+                          value={urlVal}
+                          onChange={(e) =>
+                            setEvidenceUrlInputs((prev) => ({ ...prev, [item.id]: e.target.value }))
+                          }
+                          className="flex-1 px-2.5 py-1 text-[11px] rounded bg-white border border-neutral-300 text-neutral-900 focus:outline-none focus:border-orange-500"
+                        />
+                        <button
+                          type="button"
+                          disabled={!urlVal.trim() || isBusy}
+                          onClick={() => handleSaveEvidenceUrl(item.id)}
+                          className="px-2.5 py-1 rounded bg-neutral-900 hover:bg-black disabled:opacity-40 text-white text-[11px] font-bold cursor-pointer shrink-0"
+                        >
+                          Lưu link
+                        </button>
                       </div>
                     </div>
                   );
@@ -658,10 +735,10 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
                   </div>
                   <div>
                     <h4 className="text-sm font-black text-orange-950">
-                      1. Khách hàng có thấy nút chỉnh sửa hay đổi ảnh không?
+                      1. Ảnh đã đổi có đồng bộ cho khách hàng &amp; thiết bị khác không?
                     </h4>
                     <p className="text-xs text-orange-900/90 mt-1.5 leading-relaxed">
-                      Hoàn toàn không. Mọi nút chỉnh sửa chữ và đổi ảnh chỉ hiển thị khi anh đã đăng nhập chế độ Quản trị. Khách hàng vào web chỉ thấy nội dung và hình ảnh mới nhất đã đồng bộ qua Firebase.
+                      Có. Logo (<code className="font-mono">site_settings/media_logo</code>), Ảnh Banner (<code className="font-mono">site_settings/media_hero</code>), 6 ảnh kho (<code className="font-mono">site_settings/media_evidence_1..6</code>) và ảnh mẫu căn hộ (<code className="font-mono">site_settings/main</code>) đều lưu trên Firebase Cloud và tự đồng bộ cho mọi thiết bị.
                     </p>
                   </div>
                 </div>
@@ -677,7 +754,7 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
                       2. Tại sao ảnh dung lượng lớn vẫn tải lên được?
                     </h4>
                     <p className="text-xs text-neutral-700 mt-1.5 leading-relaxed">
-                      Hệ thống tự động thu gọn kích thước và nén ảnh ngay trên trình duyệt trước khi gửi lên Firebase Firestore, giúp lưu trữ mượt mà không bị lỗi đầy bộ nhớ trình duyệt.
+                      Hệ thống tự động thu gọn kích thước và nén ảnh ngay trên trình duyệt trước khi gửi lên Firebase Firestore, giúp lưu trữ mượt mà không bị lỗi vượt dung lượng.
                     </p>
                   </div>
                 </div>

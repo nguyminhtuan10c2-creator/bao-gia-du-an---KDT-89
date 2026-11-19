@@ -25,6 +25,7 @@ export const KdtLogo: React.FC<KdtLogoProps> = ({ className = "w-10 h-10", size 
       }
     };
 
+    handleUpdate();
     window.addEventListener('kdt_logo_updated', handleUpdate);
     window.addEventListener('storage', handleUpdate);
     return () => {
@@ -42,6 +43,7 @@ export const KdtLogo: React.FC<KdtLogoProps> = ({ className = "w-10 h-10", size 
         src={customLogo}
         alt="Logo Công ty KDT-89"
         style={style}
+        referrerPolicy="no-referrer"
         className={`object-contain shrink-0 ${className}`}
         onError={() => setImgError(true)}
       />

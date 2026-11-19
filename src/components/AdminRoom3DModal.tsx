@@ -5,7 +5,7 @@ import {
   SiteSettingsData,
   saveSiteSettingsToFirebase,
 } from '../services/siteContentService';
-import { compressImageFile } from '../utils/imageCompressor';
+import { compressImageFile, extractReadableFirebaseError } from '../utils/imageCompressor';
 import {
   X,
   Upload,
@@ -43,9 +43,10 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
   const [activeTab, setActiveTab] = useState<'list' | 'add' | 'guide'>('list');
   const [isSaving, setIsSaving] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [hasUnsavedEdits, setHasUnsavedEdits] = useState(false);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
 
   // New room draft form
@@ -65,12 +66,49 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
       );
       setErrorMsg(null);
       setConfirmReset(false);
+      setHasUnsavedEdits(false);
     }
   }, [isOpen, settings]);
 
   if (!isOpen) return null;
 
-  // Compress & load uploaded image from PC/phone
+  const cleanRoomModelsPayload = (models: RoomModelItem[]): RoomModelItem[] =>
+    models.map((m) => ({
+      id: m.id,
+      name: m.name || 'Căn hộ mẫu',
+      area: Number(m.area) || 20,
+      occupants: Number(m.occupants) || 2,
+      roomType: m.roomType || 'Căn hộ dịch vụ (CHDV)',
+      imageSrc: m.imageSrc || '/assets/rooms/chdv_bedroom_ac_tv.jpg',
+      is3dEmbed: Boolean(m.is3dEmbed),
+      ...(m.embedUrl ? { embedUrl: m.embedUrl } : {}),
+      ...(m.description ? { description: m.description } : {}),
+    }));
+
+  const persistRoomModelsToFirebase = async (modelsToSave: RoomModelItem[], toastText: string) => {
+    setIsSaving(true);
+    setErrorMsg(null);
+    try {
+      const cleanedModels = cleanRoomModelsPayload(modelsToSave);
+      const result = await saveSiteSettingsToFirebase({
+        ...settings,
+        roomModels: cleanedModels,
+      });
+      onSettingsUpdated(result);
+      setHasUnsavedEdits(false);
+      setSaveMessage(toastText);
+      setTimeout(() => setSaveMessage(null), 4000);
+      return true;
+    } catch (err) {
+      console.error('Error saving room models to Firebase:', err);
+      setErrorMsg(extractReadableFirebaseError(err));
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Compress uploaded image & immediately sync to Firebase for existing room models
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     targetModelId?: string
@@ -83,25 +121,27 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
     setErrorMsg(null);
     try {
       const compressed = await compressImageFile(file, {
-        maxWidth: 1080,
-        maxHeight: 810,
-        quality: 0.74,
+        maxWidth: 920,
+        maxHeight: 690,
+        quality: 0.72,
+        maxBase64Length: 90_000,
       });
 
       if (targetModelId) {
-        setRoomModels((prev) =>
-          prev.map((m) => (m.id === targetModelId ? { ...m, imageSrc: compressed } : m))
+        const nextModels = roomModels.map((m) =>
+          m.id === targetModelId ? { ...m, imageSrc: compressed } : m
+        );
+        setRoomModels(nextModels);
+        await persistRoomModelsToFirebase(
+          nextModels,
+          'Đã nén ảnh mới và tự động đồng bộ lên Firebase!'
         );
       } else {
         setNewImgSrc(compressed);
         setPreviewImg(compressed);
       }
     } catch (err) {
-      setErrorMsg(
-        err instanceof Error
-          ? err.message
-          : 'Không thể xử lý ảnh này. Anh vui lòng thử file PNG/JPG khác hoặc dán link ảnh URL.'
-      );
+      setErrorMsg(extractReadableFirebaseError(err));
     } finally {
       setIsCompressing(false);
     }
@@ -113,13 +153,14 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
     field: K,
     value: RoomModelItem[K]
   ) => {
+    setHasUnsavedEdits(true);
     setRoomModels((prev) =>
       prev.map((m) => (m.id === id ? { ...m, [field]: value } : m))
     );
   };
 
-  // Add new room model
-  const handleAddNewRoom = (e: React.FormEvent) => {
+  // Add new room model and auto-save to Firebase
+  const handleAddNewRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
     const finalImage = newImgSrc.trim() || '/assets/rooms/chdv_bedroom_ac_tv.jpg';
@@ -135,68 +176,51 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
       description: newDescription.trim(),
     };
 
-    setRoomModels((prev) => [...prev, newItem]);
+    const nextModels = [...roomModels, newItem];
+    setRoomModels(nextModels);
 
-    setNewTitle('');
-    setNewArea(20);
-    setNewOccupants(2);
-    setNewImgSrc('');
-    setNewDescription('');
-    setPreviewImg(null);
-    setErrorMsg(null);
-    setActiveTab('list');
+    const saved = await persistRoomModelsToFirebase(
+      nextModels,
+      'Đã thêm mẫu căn hộ mới và lưu lên Firebase!'
+    );
+
+    if (saved) {
+      setNewTitle('');
+      setNewArea(20);
+      setNewOccupants(2);
+      setNewImgSrc('');
+      setNewDescription('');
+      setPreviewImg(null);
+      setActiveTab('list');
+    }
   };
 
-  // Delete model
-  const handleDeleteModel = (id: string) => {
+  // Delete model and auto-save to Firebase
+  const handleDeleteModel = async (id: string) => {
     if (roomModels.length <= 1) {
       setErrorMsg('Cần giữ lại ít nhất 1 mẫu căn hộ trên website anh nhé.');
       return;
     }
-    setErrorMsg(null);
-    setRoomModels((prev) => prev.filter((m) => m.id !== id));
+    const nextModels = roomModels.filter((m) => m.id !== id);
+    setRoomModels(nextModels);
+    await persistRoomModelsToFirebase(nextModels, 'Đã xóa mẫu căn hộ và cập nhật Firebase!');
   };
 
-  // Save directly to Firebase Firestore
+  // Save directly to Firebase Firestore (for text / URL edits)
   const handleSaveToFirebase = async () => {
-    setIsSaving(true);
-    setErrorMsg(null);
-    try {
-      const cleanedModels = roomModels.map((m) => ({
-        id: m.id,
-        name: m.name || 'Căn hộ mẫu',
-        area: Number(m.area) || 20,
-        occupants: Number(m.occupants) || 2,
-        roomType: m.roomType || 'Căn hộ dịch vụ (CHDV)',
-        imageSrc: m.imageSrc || '/assets/rooms/chdv_bedroom_ac_tv.jpg',
-        is3dEmbed: Boolean(m.is3dEmbed),
-        ...(m.embedUrl ? { embedUrl: m.embedUrl } : {}),
-        ...(m.description ? { description: m.description } : {}),
-      }));
-
-      const result = await saveSiteSettingsToFirebase({
-        ...settings,
-        roomModels: cleanedModels,
-      });
-      onSettingsUpdated(result);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3500);
-    } catch (err) {
-      console.error('Error saving room models to Firebase:', err);
-      setErrorMsg(
-        err instanceof Error
-          ? err.message
-          : 'Không thể lưu lên Firebase, anh vui lòng kiểm tra kết nối mạng hoặc giảm bớt dung lượng ảnh!'
-      );
-    } finally {
-      setIsSaving(false);
-    }
+    await persistRoomModelsToFirebase(
+      roomModels,
+      'Đã đồng bộ toàn bộ thay đổi lên Firebase!'
+    );
   };
 
-  const handleConfirmReset = () => {
+  const handleConfirmReset = async () => {
     setRoomModels(DEFAULT_ROOM_MODELS);
     setConfirmReset(false);
-    setErrorMsg(null);
+    await persistRoomModelsToFirebase(
+      DEFAULT_ROOM_MODELS,
+      'Đã khôi phục danh sách mẫu gốc và lưu lên Firebase!'
+    );
   };
 
   return (
@@ -218,11 +242,11 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
               <h3 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2 flex-wrap">
                 <span>Quản Lý Ảnh &amp; Thông Tin Mẫu Căn Hộ</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                  <Cloud className="w-3 h-3" /> Lưu Firebase
+                  <Cloud className="w-3 h-3" /> Tự động lưu Firebase
                 </span>
               </h3>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Sửa tên, diện tích, mô tả hoặc thay ảnh thực tế / GIF cho từng mẫu căn hộ (tự động nén gọn).
+                Tải ảnh mới sẽ tự động nén &amp; lưu ngay lên Firebase Cloud. Nếu sửa chữ hoặc dán link URL, nhớ bấm nút Lưu bên dưới.
               </p>
             </div>
           </div>
@@ -279,10 +303,16 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
         </div>
 
         {/* Status / Error Notifications */}
-        {isCompressing && (
+        {(isCompressing || isSaving) && (
           <div className="px-5 py-2.5 bg-amber-950/70 border-b border-amber-500/30 text-xs text-amber-300 font-semibold flex items-center gap-2 shrink-0">
             <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-            <span>Đang nén tối ưu ảnh để lưu mượt lên Firebase...</span>
+            <span>{isCompressing ? 'Đang nén tối ưu ảnh...' : 'Đang lưu và đồng bộ lên Firebase Cloud...'}</span>
+          </div>
+        )}
+        {saveMessage && (
+          <div className="px-5 py-2.5 bg-emerald-950/80 border-b border-emerald-500/40 text-xs text-emerald-300 font-bold flex items-center gap-2 shrink-0">
+            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{saveMessage}</span>
           </div>
         )}
         {errorMsg && (
@@ -303,11 +333,11 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-          {/* TAB 1: DANH SÁCH MẪU CĂN HỘ (CHỈNH SỬA TRỰC TIẾP TỪNG MẪU) */}
+          {/* TAB 1: DANH SÁCH MẪU CĂN HỘ */}
           {activeTab === 'list' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between text-xs text-neutral-400 flex-wrap gap-2">
-                <span>Sửa trực tiếp tên, diện tích, ảnh hoặc link ảnh, sau đó bấm <strong className="text-orange-400">"Lưu &amp; Đồng Bộ Firebase"</strong> bên dưới:</span>
+                <span>Tải ảnh sẽ lưu thẳng lên Firebase. Khi sửa tên, mô tả hoặc link ảnh URL, anh bấm <strong className="text-orange-400">"Lưu &amp; Đồng Bộ Firebase"</strong> bên dưới:</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -329,6 +359,7 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
                           <img
                             src={model.imageSrc}
                             alt={model.name}
+                            referrerPolicy="no-referrer"
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute top-2 left-2 bg-neutral-950/85 px-2 py-0.5 rounded text-[10px] font-bold text-white border border-neutral-700">
@@ -469,7 +500,7 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
           {activeTab === 'add' && (
             <form onSubmit={handleAddNewRoom} className="space-y-4">
               <div className="p-3.5 rounded-xl bg-orange-950/30 border border-orange-500/30 text-xs text-orange-300">
-                Anh có thể tải ảnh chụp căn hộ thực tế / GIF từ máy tính, điện thoại hoặc dán đường link ảnh URL.
+                Anh có thể tải ảnh chụp căn hộ thực tế / GIF từ máy tính, điện thoại hoặc dán đường link ảnh URL. Hệ thống sẽ tự đồng bộ lên Firebase ngay khi thêm.
               </div>
 
               <div>
@@ -573,7 +604,7 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
                   <div className="pt-2">
                     <span className="text-[11px] text-neutral-400 block mb-1">Xem trước ảnh:</span>
                     <div className="w-48 aspect-video rounded-lg overflow-hidden border border-neutral-700">
-                      <img src={previewImg} alt="Preview" className="w-full h-full object-cover" />
+                      <img src={previewImg} alt="Preview" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                     </div>
                   </div>
                 )}
@@ -594,10 +625,11 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-2.5 px-4 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                disabled={isSaving || isCompressing}
+                className="w-full py-2.5 px-4 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Thêm Mẫu Căn Hộ Này Vào Danh Sách</span>
+                <span>{isSaving ? 'Đang lưu lên Firebase...' : 'Thêm Mẫu Căn Hộ & Lưu Ngay'}</span>
               </button>
             </form>
           )}
@@ -609,10 +641,10 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
                 Hướng dẫn cập nhật ảnh căn hộ mẫu
               </h4>
               <p className="text-neutral-400">
-                • Khi bấm <strong>"Tải ảnh / GIF mới"</strong>, ảnh từ điện thoại hoặc máy tính của anh sẽ tự động được nén gọn và đưa lên làm ảnh đầu tiên trong slide căn hộ của mẫu đó.
+                • Khi bấm <strong>"Tải ảnh / GIF mới"</strong>, ảnh từ điện thoại hoặc máy tính của anh sẽ tự động được nén gọn và lưu ngay lên Firebase Firestore.
               </p>
               <p className="text-neutral-400">
-                • Sau khi chỉnh sửa tên, thông số hoặc đổi ảnh xong, anh bấm nút <strong>"Lưu &amp; Đồng Bộ Firebase"</strong> bên dưới để lưu vĩnh viễn cho mọi khách hàng xem web.
+                • Nếu anh sửa tên mẫu, diện tích hoặc dán link ảnh URL, anh nhớ bấm nút <strong>"Lưu &amp; Đồng Bộ Firebase"</strong> ở góc dưới bên phải trước khi đóng bảng quản trị nhé.
               </p>
             </div>
           )}
@@ -652,9 +684,9 @@ export const AdminRoom3DModal: React.FC<AdminRoom3DModalProps> = ({
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            {saveSuccess && (
-              <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                <Check className="w-4 h-4" /> Đã đồng bộ lên Firebase!
+            {hasUnsavedEdits && (
+              <span className="text-xs font-bold text-amber-400">
+                Có thay đổi chưa lưu!
               </span>
             )}
 

@@ -185,6 +185,7 @@ export const RealEvidenceSection: React.FC<RealEvidenceSectionProps> = ({
                 <img 
                   src={selectedImage.src} 
                   alt={selectedImage.caption} 
+                  referrerPolicy="no-referrer"
                   className="w-full max-h-[75vh] object-contain bg-black"
                 />
                 <button

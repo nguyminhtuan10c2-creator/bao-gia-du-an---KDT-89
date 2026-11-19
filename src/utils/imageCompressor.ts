@@ -1,7 +1,7 @@
 /**
  * Client-side image compression utility for Firebase Firestore & localStorage compatibility.
  * Ensures uploaded photos from phones/PCs (often 2-10MB) are resized and compressed
- * to lightweight Data URLs (~40KB-120KB) so Firestore writes never hit the 1MB doc limit.
+ * to lightweight Data URLs (~45KB-110KB) so Firestore writes never hit the 1MB doc limit.
  */
 
 export interface CompressOptions {
@@ -9,6 +9,8 @@ export interface CompressOptions {
   maxHeight?: number;
   quality?: number;
   preserveTransparency?: boolean;
+  /** Maximum target base64 string length (default 115_000 chars ≈ 85KB binary) */
+  maxBase64Length?: number;
 }
 
 export async function compressImageFile(
@@ -16,10 +18,11 @@ export async function compressImageFile(
   options: CompressOptions = {}
 ): Promise<string> {
   const {
-    maxWidth = 1200,
-    maxHeight = 900,
-    quality = 0.78,
+    maxWidth = 1080,
+    maxHeight = 810,
+    quality = 0.76,
     preserveTransparency = false,
+    maxBase64Length = 115_000,
   } = options;
 
   // Preserve animated GIFs as-is if small enough for Firestore
@@ -41,8 +44,6 @@ export async function compressImageFile(
   }
 
   const rawDataUrl = await readFileAsDataURL(file);
-
-  // If already very small (< 90KB), no heavy canvas recompression needed unless oversized dimensions
   const img = await loadImage(rawDataUrl);
 
   let targetWidth = img.naturalWidth || img.width;
@@ -56,8 +57,8 @@ export async function compressImageFile(
   const heightRatio = maxHeight / targetHeight;
   const scale = Math.min(1, widthRatio, heightRatio);
 
-  targetWidth = Math.round(targetWidth * scale);
-  targetHeight = Math.round(targetHeight * scale);
+  targetWidth = Math.max(1, Math.round(targetWidth * scale));
+  targetHeight = Math.max(1, Math.round(targetHeight * scale));
 
   const canvas = document.createElement('canvas');
   canvas.width = targetWidth;
@@ -75,28 +76,43 @@ export async function compressImageFile(
 
   ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
 
-  if (preserveTransparency && file.type === 'image/png') {
-    // Try WebP with alpha first (much smaller than PNG), fallback to PNG
+  if (preserveTransparency && (file.type === 'image/png' || file.type === 'image/webp')) {
     const webp = canvas.toDataURL('image/webp', 0.85);
-    if (webp.startsWith('data:image/webp') && webp.length < 180_000) {
+    if (webp.startsWith('data:image/webp') && webp.length <= maxBase64Length) {
       return webp;
     }
     const png = canvas.toDataURL('image/png');
-    if (png.length < 220_000) {
+    if (png.length <= Math.max(maxBase64Length, 180_000)) {
       return png;
     }
-    // Scale down further if PNG is still large
-    canvas.width = Math.round(targetWidth * 0.65);
-    canvas.height = Math.round(targetHeight * 0.65);
+    // Scale down further if transparent PNG is still large
+    canvas.width = Math.max(1, Math.round(targetWidth * 0.65));
+    canvas.height = Math.max(1, Math.round(targetHeight * 0.65));
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const smallWebp = canvas.toDataURL('image/webp', 0.8);
+    if (smallWebp.startsWith('data:image/webp') && smallWebp.length <= maxBase64Length) {
+      return smallWebp;
+    }
     return canvas.toDataURL('image/png');
   }
 
-  let output = canvas.toDataURL('image/jpeg', quality);
+  // Adaptive JPEG compression loop so image always fits comfortably under Firestore limits
+  let currentQuality = quality;
+  let output = canvas.toDataURL('image/jpeg', currentQuality);
 
-  // If still > 180KB base64 (~135KB binary), lower quality slightly
-  if (output.length > 180_000) {
-    output = canvas.toDataURL('image/jpeg', Math.max(0.55, quality - 0.18));
+  while (output.length > maxBase64Length && currentQuality > 0.48) {
+    currentQuality = Math.max(0.46, currentQuality - 0.12);
+    output = canvas.toDataURL('image/jpeg', currentQuality);
+  }
+
+  // If still above target size after lowering quality, step down dimensions slightly
+  if (output.length > maxBase64Length) {
+    canvas.width = Math.max(1, Math.round(targetWidth * 0.76));
+    canvas.height = Math.max(1, Math.round(targetHeight * 0.76));
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    output = canvas.toDataURL('image/jpeg', 0.62);
   }
 
   return output;
@@ -133,4 +149,27 @@ export function estimateUtf8Bytes(data: unknown): number {
   } catch {
     return 0;
   }
+}
+
+export function extractReadableFirebaseError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err || '');
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.error === 'string') {
+      const inner = parsed.error;
+      if (inner.includes('exceeds the maximum allowed size')) {
+        return 'Ảnh quá nặng vượt giới hạn 1MB của Firebase. Anh hãy chọn ảnh nhẹ hơn hoặc dán link URL nhé!';
+      }
+      if (inner.includes('permission-denied') || inner.includes('Missing or insufficient permissions')) {
+        return 'Firebase từ chối quyền ghi (Permission Denied). Anh kiểm tra lại cấu hình Firestore Rules.';
+      }
+      if (inner.includes('offline') || inner.includes('network')) {
+        return 'Không có kết nối mạng tới máy chủ Firebase. Anh vui lòng thử lại sau.';
+      }
+      return `Lỗi đồng bộ Firebase: ${inner}`;
+    }
+  } catch {
+    // not JSON
+  }
+  return raw || 'Không thể lưu dữ liệu lên Firebase, anh vui lòng thử lại!';
 }

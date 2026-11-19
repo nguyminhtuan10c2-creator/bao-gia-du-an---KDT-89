@@ -1,4 +1,4 @@
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, getDocFromServer } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../utils/firebaseErrors';
 
@@ -8,6 +8,8 @@ export interface MediaAssetsState {
   evidenceImages: Record<number, string>;
 }
 
+const EVIDENCE_IDS = [1, 2, 3, 4, 5, 6] as const;
+
 const STORAGE_KEYS = {
   logo: 'kdt_custom_logo',
   hero: 'kdt89_custom_hero_image',
@@ -16,17 +18,39 @@ const STORAGE_KEYS = {
 
 let memoryState: MediaAssetsState | null = null;
 
+// Track per-slot evidence state from individual docs (primary) & legacy single doc (fallback)
+const perSlotEvidence: Record<number, string | null> = {};
+let legacyEvidenceMap: Record<number, string> = {};
+
+function rebuildMergedEvidence(): Record<number, string> {
+  const merged: Record<number, string> = {};
+  EVIDENCE_IDS.forEach((id) => {
+    if (id in perSlotEvidence) {
+      const v = perSlotEvidence[id];
+      if (v) merged[id] = v;
+    } else if (legacyEvidenceMap[id]) {
+      merged[id] = legacyEvidenceMap[id];
+    }
+  });
+  // Also keep any unexpected numeric keys from legacy map
+  Object.entries(legacyEvidenceMap).forEach(([k, v]) => {
+    const num = Number(k);
+    if (!(num in perSlotEvidence) && v) {
+      merged[num] = v;
+    }
+  });
+  return merged;
+}
+
 export function getLocalMediaAssets(): MediaAssetsState {
   if (typeof window === 'undefined') {
     return { logoUrl: null, heroImageUrl: null, evidenceImages: {} };
   }
-  let logoUrl: string | null = memoryState?.logoUrl ?? null;
-  let heroImageUrl: string | null = memoryState?.heroImageUrl ?? null;
-  let evidenceImages: Record<number, string> = memoryState?.evidenceImages
-    ? { ...memoryState.evidenceImages }
-    : {};
-
   if (!memoryState) {
+    let logoUrl: string | null = null;
+    let heroImageUrl: string | null = null;
+    let evidenceImages: Record<number, string> = {};
+
     try {
       logoUrl = localStorage.getItem(STORAGE_KEYS.logo) || null;
     } catch {
@@ -99,84 +123,106 @@ function setLocalEvidence(items: Record<number, string>) {
   window.dispatchEvent(new Event('kdt_evidence_updated'));
 }
 
+export async function verifyFirebaseConnection(): Promise<{
+  connected: boolean;
+  error?: string;
+}> {
+  try {
+    await getDocFromServer(doc(db, 'site_settings', 'main'));
+    return { connected: true };
+  } catch (err) {
+    return {
+      connected: false,
+      error: err instanceof Error ? err.message : 'Không thể kết nối Firebase',
+    };
+  }
+}
+
 export async function saveLogoToFirebase(logoUrl: string | null): Promise<void> {
-  setLocalLogo(logoUrl);
   const path = 'site_settings/media_logo';
   try {
     await setDoc(doc(db, 'site_settings', 'media_logo'), {
       imageUrl: logoUrl || '',
       updatedAt: new Date().toISOString(),
     });
+    setLocalLogo(logoUrl);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
 export async function saveHeroImageToFirebase(heroImageUrl: string | null): Promise<void> {
-  setLocalHero(heroImageUrl);
   const path = 'site_settings/media_hero';
   try {
     await setDoc(doc(db, 'site_settings', 'media_hero'), {
       imageUrl: heroImageUrl || '',
       updatedAt: new Date().toISOString(),
     });
+    setLocalHero(heroImageUrl);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
+/**
+ * Saves each evidence slot in its own dedicated Firestore document (`site_settings/media_evidence_<id>`)
+ * so uploading 6 high-detail photos NEVER exceeds Firestore's 1MB single-document limit.
+ */
 export async function saveEvidenceImageToFirebase(
   itemId: number,
   imageUrl: string | null
 ): Promise<Record<number, string>> {
-  const current = getLocalMediaAssets().evidenceImages;
-  const next: Record<string, string> = {};
-  Object.entries(current).forEach(([k, v]) => {
-    if (v) next[String(k)] = v;
-  });
-
-  if (imageUrl) {
-    next[String(itemId)] = imageUrl;
-  } else {
-    delete next[String(itemId)];
-  }
-
-  const numericMap: Record<number, string> = {};
-  Object.entries(next).forEach(([k, v]) => {
-    numericMap[Number(k)] = v;
-  });
-
-  setLocalEvidence(numericMap);
-
-  const path = 'site_settings/media_evidence';
+  const docId = `media_evidence_${itemId}`;
+  const path = `site_settings/${docId}`;
   try {
-    await setDoc(doc(db, 'site_settings', 'media_evidence'), {
-      items: next,
+    await setDoc(doc(db, 'site_settings', docId), {
+      imageUrl: imageUrl || '',
       updatedAt: new Date().toISOString(),
     });
+
+    perSlotEvidence[itemId] = imageUrl || null;
+    if (!imageUrl) {
+      delete legacyEvidenceMap[itemId];
+    }
+    const merged = rebuildMergedEvidence();
+    setLocalEvidence(merged);
+    return merged;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
-
-  return numericMap;
 }
 
 export async function resetAllEvidenceImagesInFirebase(): Promise<void> {
-  setLocalEvidence({});
-  const path = 'site_settings/media_evidence';
   try {
-    await setDoc(doc(db, 'site_settings', 'media_evidence'), {
-      items: {},
-      updatedAt: new Date().toISOString(),
+    await Promise.all([
+      ...EVIDENCE_IDS.map((id) =>
+        setDoc(doc(db, 'site_settings', `media_evidence_${id}`), {
+          imageUrl: '',
+          updatedAt: new Date().toISOString(),
+        })
+      ),
+      setDoc(doc(db, 'site_settings', 'media_evidence'), {
+        items: {},
+        updatedAt: new Date().toISOString(),
+      }),
+    ]);
+
+    EVIDENCE_IDS.forEach((id) => {
+      perSlotEvidence[id] = null;
     });
+    legacyEvidenceMap = {};
+    setLocalEvidence({});
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+    handleFirestoreError(error, OperationType.WRITE, 'site_settings/media_evidence');
   }
 }
 
 export function subscribeToMediaAssets(onChange?: (state: MediaAssetsState) => void): () => void {
-  let state = getLocalMediaAssets();
-  onChange?.(state);
+  onChange?.(getLocalMediaAssets());
+
+  const emit = () => {
+    onChange?.(getLocalMediaAssets());
+  };
 
   const unsubLogo = onSnapshot(
     doc(db, 'site_settings', 'media_logo'),
@@ -184,9 +230,8 @@ export function subscribeToMediaAssets(onChange?: (state: MediaAssetsState) => v
       if (snap.exists()) {
         const imageUrl = (snap.data()?.imageUrl as string) || '';
         const val = imageUrl.trim() ? imageUrl : null;
-        state = { ...state, logoUrl: val };
         setLocalLogo(val);
-        onChange?.(state);
+        emit();
       }
     },
     (err) => {
@@ -200,9 +245,8 @@ export function subscribeToMediaAssets(onChange?: (state: MediaAssetsState) => v
       if (snap.exists()) {
         const imageUrl = (snap.data()?.imageUrl as string) || '';
         const val = imageUrl.trim() ? imageUrl : null;
-        state = { ...state, heroImageUrl: val };
         setLocalHero(val);
-        onChange?.(state);
+        emit();
       }
     },
     (err) => {
@@ -210,28 +254,48 @@ export function subscribeToMediaAssets(onChange?: (state: MediaAssetsState) => v
     }
   );
 
-  const unsubEvidence = onSnapshot(
+  // Subscribe to legacy aggregate doc (for backward compatibility with older saved data)
+  const unsubLegacyEvidence = onSnapshot(
     doc(db, 'site_settings', 'media_evidence'),
     (snap) => {
       if (snap.exists()) {
         const rawItems = (snap.data()?.items as Record<string, string>) || {};
-        const numericMap: Record<number, string> = {};
+        const nextLegacy: Record<number, string> = {};
         Object.entries(rawItems).forEach(([k, v]) => {
-          if (v) numericMap[Number(k)] = v;
+          if (v) nextLegacy[Number(k)] = v;
         });
-        state = { ...state, evidenceImages: numericMap };
-        setLocalEvidence(numericMap);
-        onChange?.(state);
+        legacyEvidenceMap = nextLegacy;
+        setLocalEvidence(rebuildMergedEvidence());
+        emit();
       }
     },
     (err) => {
-      console.warn('media_evidence snapshot fallback:', err.message);
+      console.warn('media_evidence legacy snapshot fallback:', err.message);
     }
+  );
+
+  // Subscribe to per-slot docs `media_evidence_1` .. `media_evidence_6`
+  const slotUnsubs = EVIDENCE_IDS.map((id) =>
+    onSnapshot(
+      doc(db, 'site_settings', `media_evidence_${id}`),
+      (snap) => {
+        if (snap.exists()) {
+          const imageUrl = (snap.data()?.imageUrl as string) || '';
+          perSlotEvidence[id] = imageUrl.trim() ? imageUrl : null;
+          setLocalEvidence(rebuildMergedEvidence());
+          emit();
+        }
+      },
+      (err) => {
+        console.warn(`media_evidence_${id} snapshot fallback:`, err.message);
+      }
+    )
   );
 
   return () => {
     unsubLogo();
     unsubHero();
-    unsubEvidence();
+    unsubLegacyEvidence();
+    slotUnsubs.forEach((unsub) => unsub());
   };
 }
